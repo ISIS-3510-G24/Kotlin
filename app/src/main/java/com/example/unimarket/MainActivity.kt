@@ -16,7 +16,6 @@ import com.example.unimarket.ui.theme.UniMarketTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
             UniMarketTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
