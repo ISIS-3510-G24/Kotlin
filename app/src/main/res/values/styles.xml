@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base Application Theme -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <!-- Primary colors -->
+        <item name="colorPrimary">@color/blue_500</item>
+        <item name="colorPrimaryVariant">@color/blue_600</item>
+        <item name="colorSecondary">@color/blue_700</item>
+        <item name="android:statusBarColor">@color/blue_800</item>
+        <item name="android:windowBackground">@color/gray_light_500</item>
+        <!-- Main font family (using the Inter regular font) -->
+        <item name="android:fontFamily">@font/inter_regular</item>
+    </style>
+
+    <!-- Title Text Appearance -->
+    <style name="TextAppearance.App.Title" parent="TextAppearance.MaterialComponents.Headline6">
+        <!-- Text color for titles -->
+        <item name="android:textColor">@color/gray_dark_100</item>
+        <!-- Using the Inter bold font for titles -->
+        <item name="android:fontFamily">@font/inter_bold</item>
+    </style>
+
+    <!-- Custom Button Style -->
+    <style name="Widget.App.Button" parent="Widget.MaterialComponents.Button">
+        <!-- Button background tint -->
+        <item name="android:backgroundTint">@color/blue_500</item>
+        <!-- Button text color -->
+        <item name="android:textColor">@color/white</item>
+        <!-- Using the Inter regular font for button text -->
+        <item name="android:fontFamily">@font/inter_regular</item>
+    </style>
+
+    <!-- Style for Rounded ImageViews -->
+    <style name="Widget.App.RoundedImage">
+        <!-- Enable clipping to outline for rounded corners -->
+        <item name="android:clipToOutline">true</item>
+    </style>
+</resources>
