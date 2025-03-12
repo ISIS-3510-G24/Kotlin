@@ -5,7 +5,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.example.unimarket.ui.theme.UniMarketTheme
-import com.example.unimarket.ui.login.LoginActivity  // Asegúrate de tener esta actividad implementada
+import com.example.unimarket.ui.login.LoginActivity // Add import statement
+import kotlin.jvm.java
 
 // Activity for the Onboarding screen
 class OnboardingActivity : ComponentActivity() {
