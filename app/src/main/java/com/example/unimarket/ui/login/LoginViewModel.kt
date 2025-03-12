@@ -3,7 +3,7 @@ package com.example.unimarket.ui.login
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.unimarket.data.FirebaseRepository
+import com.example.unimarket.ui.data.FirebaseRepository
 import kotlinx.coroutines.launch
 
 // ViewModel for the Login screen
