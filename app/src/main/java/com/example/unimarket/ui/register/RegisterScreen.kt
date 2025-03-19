@@ -1,10 +1,21 @@
 package com.example.unimarket.ui.register
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.runtime.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -17,11 +28,11 @@ fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
     viewModel: RegisterViewModel = viewModel()
 ) {
-    // States of viewModel
+    // States of ViewModel
     val registerSuccessState = viewModel.registerSuccess.value
     val errorMessageState = viewModel.errorMessage.value
 
-    // If successful, call callback
+    // Successful registration
     LaunchedEffect(registerSuccessState) {
         if (registerSuccessState == true) {
             onRegisterSuccess()
@@ -47,7 +58,7 @@ fun RegisterScreen(
             modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
         )
 
-        // Name field
+        // Name
         OutlinedTextField(
             value = viewModel.name.value,
             onValueChange = { viewModel.name.value = it },
@@ -57,7 +68,7 @@ fun RegisterScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Email field
+        // Email
         OutlinedTextField(
             value = viewModel.email.value,
             onValueChange = { viewModel.email.value = it },
@@ -68,7 +79,7 @@ fun RegisterScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Password field
+        // Password
         OutlinedTextField(
             value = viewModel.password.value,
             onValueChange = { viewModel.password.value = it },
@@ -80,7 +91,7 @@ fun RegisterScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Confirm Password field
+        // Confirm Password
         OutlinedTextField(
             value = viewModel.confirmPassword.value,
             onValueChange = { viewModel.confirmPassword.value = it },
@@ -91,7 +102,7 @@ fun RegisterScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Terms checkbox
+        // Checkbox for Terms and Conditions
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier

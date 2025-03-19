@@ -29,35 +29,25 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-    NavHost(
-        navController = navController,
-        startDestination = "login"  // First screen is login
-    ) {
+
+    NavHost(navController, startDestination = "login") {
         composable("login") {
             LoginScreen(
-                onLoginSuccess = {
-                    // If login successful, go to Home
-                    navController.navigate("home") {
-                        // Avoid user to go back
-                        popUpTo("login") { inclusive = true }
-                    }
-                },
-                onNavigateToRegister = {
-                    // Navigate register screen
-                    navController.navigate("register")
-                }
+                onLoginSuccess = { navController.navigate("home") },
+                onNavigateToRegister = { navController.navigate("register") }
             )
         }
-
         composable("register") {
             RegisterScreen(
                 onRegisterSuccess = {
-                    // After registration, go back to login screen
+                    // You can choose to either:
+                    // 1) Go back to the login screen:
                     navController.popBackStack()
+                    // 2) Go to the home screen:
+                    // navController.navigate("home") { popUpTo("login") { inclusive = true } }
                 }
             )
         }
-
         composable("home") {
             HomeScreen()
         }

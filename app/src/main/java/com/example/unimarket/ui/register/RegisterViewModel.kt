@@ -2,8 +2,8 @@ package com.example.unimarket.ui.register
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import com.example.unimarket.ui.data.FirebaseRealtimeDatabaseSingleton
 import com.google.firebase.auth.FirebaseAuth
-import com.example.unimarket.data.FirebaseRealtimeDatabaseSingleton
 import com.google.firebase.database.DatabaseReference
 
 class RegisterViewModel : ViewModel() {
