@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
 
 class LoginViewModel: ViewModel() {
-    val loginSucess = mutableStateOf<Boolean?>(null)
+    val loginSuccess = mutableStateOf<Boolean?>(null)
     val errorMessage = mutableStateOf<String?>(null)
 
     private val auth: FirebaseAuth by lazy {
@@ -16,9 +16,9 @@ class LoginViewModel: ViewModel() {
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    loginSucess.value = true
+                    loginSuccess.value = true
                 } else {
-                    loginSucess.value = false
+                    loginSuccess.value = false
                     errorMessage.value = task.exception?.localizedMessage
                 }
             }
