@@ -62,5 +62,6 @@ dependencies {
     implementation("com.google.firebase:firebase-database")
     implementation("com.google.firebase:firebase-auth:23.2.0")
     implementation("androidx.navigation:navigation-compose:2.8.9")
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("androidx.datastore:datastore-preferences:1.1.3")
+    implementation("io.coil-kt:coil-compose:2.3.0")
 }
