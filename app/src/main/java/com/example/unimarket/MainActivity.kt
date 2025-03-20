@@ -13,12 +13,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.unimarket.ui.data.PreferencesManager
-import com.example.unimarket.ui.home.HomeScreen
 import com.example.unimarket.ui.login.LoginScreen
+import com.example.unimarket.ui.main.MainScreen
 import com.example.unimarket.ui.onboarding.OnboardingScreen
 import com.example.unimarket.ui.onboarding.PersonalizationScreen
 import com.example.unimarket.ui.register.RegisterScreen
 import com.example.unimarket.ui.theme.UniMarketTheme
+import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -43,8 +44,15 @@ fun AppNavigation() {
     val onboardingCompletedFlow = PreferencesManager.isOnboardingCompleted(context)
     val onboardingCompleted by onboardingCompletedFlow.collectAsState(initial = false)
 
-    // Set startDestination based on whether onboarding is completed
-    val startDestination = if (onboardingCompleted) "login" else "onboarding"
+    // Check if user is authenticated
+    val currentUser = FirebaseAuth.getInstance().currentUser
+
+    // Set startDestination based on whether onboarding and authentication status
+    val startDestination = if (!onboardingCompleted) {
+        "onboarding"
+    } else {
+        if (currentUser != null) "main" else "login"
+    }
 
     NavHost(navController = navController, startDestination = startDestination)
     {
@@ -78,7 +86,11 @@ fun AppNavigation() {
 
         composable("login") {
             LoginScreen(
-                onLoginSuccess = { navController.navigate("home") },
+                onLoginSuccess = {
+                    navController.navigate("main") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                },
                 onNavigateToRegister = { navController.navigate("register") }
             )
         }
@@ -93,8 +105,8 @@ fun AppNavigation() {
                 }
             )
         }
-        composable("home") {
-            HomeScreen()
+        composable("main") {
+            MainScreen()
         }
     }
 }
