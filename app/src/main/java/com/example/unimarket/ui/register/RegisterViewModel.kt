@@ -28,7 +28,8 @@ class RegisterViewModel : ViewModel() {
     val acceptTerms = mutableStateOf(false)
 
     // Profile picture URL state; default profile picture if none is uploaded
-    val profilePictureUrl = mutableStateOf("https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Default_pfp.svg/2048px-Default_pfp.svg.png")
+    val profilePictureUrl =
+        mutableStateOf("https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Default_pfp.svg/2048px-Default_pfp.svg.png")
 
     private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
     private val storage: FirebaseStorage by lazy { FirebaseStorage.getInstance() }
@@ -36,7 +37,8 @@ class RegisterViewModel : ViewModel() {
     // Uploads profile picture to Firebase Storage and updates profilePictureUrl
     fun uploadProfilePicture(imageUri: Uri, onComplete: (Boolean) -> Unit) {
         val userId = auth.currentUser?.uid ?: "unknown_user"
-        val ref: StorageReference = storage.reference.child("profile_pictures/${userId}_${System.currentTimeMillis()}.jpg")
+        val ref: StorageReference =
+            storage.reference.child("profile_pictures/${userId}_${System.currentTimeMillis()}.jpg")
         ref.putFile(imageUri)
             .addOnSuccessListener {
                 ref.downloadUrl.addOnSuccessListener { uri ->
@@ -52,6 +54,18 @@ class RegisterViewModel : ViewModel() {
     }
 
     fun registerUser() {
+        // Validate that all required fields are filled
+        if (displayName.value.isEmpty() ||
+            email.value.isEmpty() ||
+            password.value.isEmpty() ||
+            confirmPassword.value.isEmpty() ||
+            major.value.isEmpty() ||
+            preferences.value.isEmpty()
+        ) {
+            errorMessage.value = "Please fill out all required fields"
+            return
+        }
+
         // Validate that passwords match
         if (password.value != confirmPassword.value) {
             errorMessage.value = "Passwords do not match"
