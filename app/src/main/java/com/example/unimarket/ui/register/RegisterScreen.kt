@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
@@ -49,7 +51,6 @@ fun RegisterScreen(
     val registerSuccessState = viewModel.registerSuccess.value
     val errorMessageState = viewModel.errorMessage.value
 
-    // Navigate on successful registration
     LaunchedEffect(registerSuccessState) {
         if (registerSuccessState == true) {
             onRegisterSuccess()
@@ -70,37 +71,33 @@ fun RegisterScreen(
     }
 
     var majorDropdownExpanded by remember { mutableStateOf(false) }
-    // Hardcoded sample preferences (alternatively, load from Firestore)
     val allPreferences = listOf("Academics", "Education", "Handcrafts", "Sports", "Wellness")
-
-    // Image picker launcher for profile picture
     val imagePickerLauncher = rememberLauncherForActivityResult(contract = GetContent()) { uri: Uri? ->
         uri?.let {
-            viewModel.uploadProfilePicture(it) { success ->
-                // Optionally, show a toast or update UI on success/failure
-            }
+            viewModel.uploadProfilePicture(it) { success -> }
         }
     }
+
+    // Wrap content in a Column with verticalScroll
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(scrollState)
             .padding(24.dp),
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.Center
     ) {
-        // Title
         Text(
             text = "Sign up",
             style = MaterialTheme.typography.headlineMedium
         )
-        // Subtitle
         Text(
             text = "Create an account to get started",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
         )
-        // Profile picture preview
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -115,7 +112,6 @@ fun RegisterScreen(
                 contentScale = ContentScale.Crop
             )
         }
-        // Button to upload profile picture
         Button(
             onClick = { imagePickerLauncher.launch("image/*") },
             modifier = Modifier.fillMaxWidth()
@@ -123,7 +119,6 @@ fun RegisterScreen(
             Text("Upload Profile Picture")
         }
         Spacer(modifier = Modifier.height(8.dp))
-        // Display Name field
         OutlinedTextField(
             value = viewModel.displayName.value,
             onValueChange = { viewModel.displayName.value = it },
@@ -132,7 +127,6 @@ fun RegisterScreen(
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
-        // Email field
         OutlinedTextField(
             value = viewModel.email.value,
             onValueChange = { viewModel.email.value = it },
@@ -142,7 +136,6 @@ fun RegisterScreen(
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
-        // Bio field (multiline)
         OutlinedTextField(
             value = viewModel.bio.value,
             onValueChange = { viewModel.bio.value = it },
@@ -152,7 +145,6 @@ fun RegisterScreen(
                 .height(100.dp)
         )
         Spacer(modifier = Modifier.height(8.dp))
-        // Major dropdown loaded from Firestore
         ExposedDropdownMenuBox(
             expanded = majorDropdownExpanded,
             onExpandedChange = { majorDropdownExpanded = !majorDropdownExpanded }
@@ -162,7 +154,7 @@ fun RegisterScreen(
                 onValueChange = { /* No direct editing */ },
                 readOnly = true,
                 label = { Text("Major") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = majorDropdownExpanded) }
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = majorDropdownExpanded) },
             )
             ExposedDropdownMenu(
                 expanded = majorDropdownExpanded,
@@ -180,7 +172,6 @@ fun RegisterScreen(
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
-        // Preferences checkboxes
         Text(
             text = "Select your preferences:",
             style = MaterialTheme.typography.bodyMedium
@@ -205,7 +196,6 @@ fun RegisterScreen(
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
-        // Password field
         OutlinedTextField(
             value = viewModel.password.value,
             onValueChange = { viewModel.password.value = it },
@@ -216,7 +206,6 @@ fun RegisterScreen(
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
-        // Confirm password field
         OutlinedTextField(
             value = viewModel.confirmPassword.value,
             onValueChange = { viewModel.confirmPassword.value = it },
@@ -227,7 +216,6 @@ fun RegisterScreen(
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))
-        // Checkbox for Terms and Conditions
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(top = 16.dp)
@@ -242,14 +230,12 @@ fun RegisterScreen(
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
-        // Sign up button
         Button(
             onClick = { viewModel.registerUser() },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Sign up")
         }
-        // Error message
         if (errorMessageState != null) {
             Text(
                 text = errorMessageState,
@@ -259,3 +245,4 @@ fun RegisterScreen(
         }
     }
 }
+
