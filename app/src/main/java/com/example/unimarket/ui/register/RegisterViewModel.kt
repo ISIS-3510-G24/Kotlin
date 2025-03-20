@@ -27,8 +27,7 @@ class RegisterViewModel : ViewModel() {
     val preferences = mutableStateOf<List<String>>(emptyList())
     val acceptTerms = mutableStateOf(false)
 
-    // Profile picture URL state
-    // Default value: a default profile picture URL
+    // Profile picture URL state; default profile picture if none is uploaded
     val profilePictureUrl = mutableStateOf("https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Default_pfp.svg/2048px-Default_pfp.svg.png")
 
     private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
@@ -36,12 +35,10 @@ class RegisterViewModel : ViewModel() {
 
     // Uploads profile picture to Firebase Storage and updates profilePictureUrl
     fun uploadProfilePicture(imageUri: Uri, onComplete: (Boolean) -> Unit) {
-        // Create a unique reference for the image (e.g., using user ID and timestamp)
         val userId = auth.currentUser?.uid ?: "unknown_user"
         val ref: StorageReference = storage.reference.child("profile_pictures/${userId}_${System.currentTimeMillis()}.jpg")
         ref.putFile(imageUri)
             .addOnSuccessListener {
-                // Get the download URL
                 ref.downloadUrl.addOnSuccessListener { uri ->
                     profilePictureUrl.value = uri.toString()
                     onComplete(true)
