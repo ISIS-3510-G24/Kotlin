@@ -1,9 +1,19 @@
 package com.example.unimarket.ui.explore
 
-// This represents the product data
+import com.google.firebase.Timestamp
+
+// This data class represents a product item stored in Firestore
 data class Product(
     val id: String = "",
-    val name: String = "",
+    val classId: String = "",
+    val createdAt: Timestamp? = null,
+    val description: String = "",
+    val imageUrls: List<String> = emptyList(),
+    val labels: List<String> = emptyList(),
+    val majorID: String = "",
     val price: Double = 0.0,
-    val imageUrl: String = ""
+    val sellerID: String = "",
+    val status: String = "",
+    val title: String = "",
+    val updatedAt: Timestamp? = null
 )

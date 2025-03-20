@@ -1,7 +1,15 @@
 package com.example.unimarket.ui.explore
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
@@ -22,14 +30,25 @@ import coil.compose.rememberAsyncImagePainter
 @Composable
 fun ExploreScreen(exploreViewModel: ExploreViewModel = viewModel()) {
     val productList by exploreViewModel.products.collectAsState()
+    val errorMessage by exploreViewModel.errorMessage.collectAsState()
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(productList) { product ->
-            ProductCard(product)
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (errorMessage != null) {
+            // Show error message if any
+            Text(
+                text = errorMessage ?: "",
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(productList) { product ->
+                ProductCard(product)
+            }
         }
     }
 }
@@ -42,9 +61,9 @@ fun ProductCard(product: Product) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Load product image using Coil
+            // Load product image using Coil (if imageUrls list is not empty)
             val painter = rememberAsyncImagePainter(
-                model = product.imageUrl,
+                model = product.imageUrls.firstOrNull(),
                 contentScale = ContentScale.Crop
             )
 
@@ -56,7 +75,7 @@ fun ProductCard(product: Product) {
             ) {
                 Image(
                     painter = painter,
-                    contentDescription = product.name,
+                    contentDescription = product.title,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
@@ -64,7 +83,7 @@ fun ProductCard(product: Product) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(text = product.name, style = MaterialTheme.typography.titleMedium)
+            Text(text = product.title, style = MaterialTheme.typography.titleMedium)
             Text(text = "$${product.price}", style = MaterialTheme.typography.bodyMedium)
         }
     }
