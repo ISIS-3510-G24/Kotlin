@@ -4,6 +4,7 @@ import com.google.firebase.Timestamp
 
 // This data class represents a product item stored in Firestore
 data class Product(
+    val id: String = "",
     val classId: String = "",
     val createdAt: Timestamp? = null,
     val description: String = "",
