@@ -64,4 +64,5 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.coil)
     implementation(libs.firestore)
+    implementation(libs.firebase.storage)
 }

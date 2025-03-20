@@ -1,48 +1,74 @@
 package com.example.unimarket.ui.register
 
+import android.net.Uri
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import com.example.unimarket.ui.data.FirebaseRealtimeDatabaseSingleton
+import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DatabaseReference
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageReference
 
+// This ViewModel handles user registration, image upload, and saving additional user data to Firestore
 class RegisterViewModel : ViewModel() {
 
-    // UI State
+    // UI State for registration status and error messages
     val registerSuccess = mutableStateOf<Boolean?>(null)
     val errorMessage = mutableStateOf<String?>(null)
 
-    // Extra fields for validation
-    val name = mutableStateOf("")
+    // Registration fields
+    val displayName = mutableStateOf("")
+    val bio = mutableStateOf("")
     val email = mutableStateOf("")
     val password = mutableStateOf("")
     val confirmPassword = mutableStateOf("")
+    val major = mutableStateOf("")
+    val preferences = mutableStateOf<List<String>>(emptyList())
     val acceptTerms = mutableStateOf(false)
 
-    private val auth: FirebaseAuth by lazy {
-        FirebaseAuth.getInstance()
+    // Profile picture URL state; default profile picture if none is uploaded
+    val profilePictureUrl = mutableStateOf("https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Default_pfp.svg/2048px-Default_pfp.svg.png")
+
+    private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
+    private val storage: FirebaseStorage by lazy { FirebaseStorage.getInstance() }
+
+    // Uploads profile picture to Firebase Storage and updates profilePictureUrl
+    fun uploadProfilePicture(imageUri: Uri, onComplete: (Boolean) -> Unit) {
+        val userId = auth.currentUser?.uid ?: "unknown_user"
+        val ref: StorageReference = storage.reference.child("profile_pictures/${userId}_${System.currentTimeMillis()}.jpg")
+        ref.putFile(imageUri)
+            .addOnSuccessListener {
+                ref.downloadUrl.addOnSuccessListener { uri ->
+                    profilePictureUrl.value = uri.toString()
+                    onComplete(true)
+                }.addOnFailureListener {
+                    onComplete(false)
+                }
+            }
+            .addOnFailureListener {
+                onComplete(false)
+            }
     }
 
     fun registerUser() {
-        // Passwords validation
+        // Validate that passwords match
         if (password.value != confirmPassword.value) {
             errorMessage.value = "Passwords do not match"
             return
         }
-        // Checkbox validation
+        // Validate that Terms and Conditions are accepted
         if (!acceptTerms.value) {
             errorMessage.value = "You must accept the Terms and Conditions"
             return
         }
-
-        // Create user in Firebase Auth
+        // Create user with Firebase Auth
         auth.createUserWithEmailAndPassword(email.value, password.value)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    // Save name
                     val userId = auth.currentUser?.uid
                     if (userId != null) {
-                        saveUserNameToDatabase(userId, name.value)
+                        saveUserDataToFirestore(userId)
                     }
                     registerSuccess.value = true
                 } else {
@@ -52,21 +78,27 @@ class RegisterViewModel : ViewModel() {
             }
     }
 
-    private fun saveUserNameToDatabase(userId: String, userName: String) {
-
-        val userRef: DatabaseReference =
-            FirebaseRealtimeDatabaseSingleton.getReference("User").child(userId)
-
+    // Saves additional user data to Firestore in the "User" collection
+    private fun saveUserDataToFirestore(userId: String) {
         val userData = mapOf(
-            "name" to userName,
-            "email" to email.value
+            "displayName" to displayName.value,
+            "bio" to bio.value,
+            "email" to email.value,
+            "major" to major.value,
+            "preferences" to preferences.value,
+            "profilePicture" to profilePictureUrl.value,
+            "ratingAverage" to 0,
+            "reviewsCount" to 0,
+            "createdAt" to FieldValue.serverTimestamp(),
+            "updatedAt" to FieldValue.serverTimestamp()
         )
-
-        userRef.setValue(userData).addOnCompleteListener { dbTask ->
-            if (!dbTask.isSuccessful) {
-                // Error handling is we can't save name
-                errorMessage.value = dbTask.exception?.localizedMessage
+        FirebaseFirestoreSingleton.getCollection("User")
+            .document(userId)
+            .set(userData, SetOptions.merge())
+            .addOnCompleteListener { dbTask ->
+                if (!dbTask.isSuccessful) {
+                    errorMessage.value = dbTask.exception?.localizedMessage
+                }
             }
-        }
     }
 }
