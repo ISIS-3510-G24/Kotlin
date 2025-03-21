@@ -154,9 +154,6 @@ fun OnboardingScreen(
             onClick = {
                 if (currentPage == pages.lastIndex) {
                     // Mark onboarding as completed on last page
-                    coroutineScope.launch {
-                        PreferencesManager.setOnboardingCompleted(context, true)
-                    }
                     onFinishOnboarding()
                 } else {
                     currentPage++
