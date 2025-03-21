@@ -2,11 +2,11 @@ package com.example.unimarket.ui.main
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.ChatBubble
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -30,10 +30,10 @@ fun MainScreen() {
 
     // List of items for the bottom bar
     val bottomNavItems = listOf(
-        BottomNavItem("Orders", "orders", Icons.Default.ShoppingCart),
+        BottomNavItem("Orders", "orders", Icons.Default.Widgets),
         BottomNavItem("Find & Offer", "find_offer", Icons.Default.Search),
-        BottomNavItem("Explore", "explore", Icons.Default.Home),
-        BottomNavItem("Chat", "chat", Icons.Default.MailOutline),
+        BottomNavItem("Explore", "explore", Icons.Default.Explore),
+        BottomNavItem("Chat", "chat", Icons.Default.ChatBubble),
         BottomNavItem("Profile", "profile", Icons.Default.Person)
     )
 
