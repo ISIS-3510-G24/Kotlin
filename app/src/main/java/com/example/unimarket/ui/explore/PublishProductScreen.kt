@@ -38,6 +38,7 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
 import com.google.firebase.Timestamp
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.launch
 
 // Data class to represent a class item from Firestore.
@@ -122,6 +123,7 @@ fun PublishProductScreen(
                     classes = classList
                 }
                 .addOnFailureListener {
+                    FirebaseCrashlytics.getInstance().recordException(it)
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar("Failed to load classes.")
                     }
@@ -334,6 +336,7 @@ fun PublishProductScreen(
                                 }
                             },
                             onFailure = { errorMsg ->
+                                FirebaseCrashlytics.getInstance().log(errorMsg)
                                 coroutineScope.launch {
                                     snackbarHostState.showSnackbar(errorMsg)
                                 }
