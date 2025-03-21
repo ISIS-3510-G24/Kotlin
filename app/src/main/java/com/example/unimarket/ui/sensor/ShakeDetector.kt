@@ -21,8 +21,8 @@ fun ShakeDetector(
     val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     // Get the default accelerometer sensor
     val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-    // Threshold for shake detection
-    val shakeThreshold = 12f
+    // Updated threshold for shake detection (increased for lower sensitivity)
+    val shakeThreshold = 16f
     // Minimum time between shake events in milliseconds
     val shakeTimeWindow = 500L
     val lastShakeTime = remember { mutableStateOf(0L) }
