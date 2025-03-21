@@ -81,7 +81,6 @@ fun ExploreScreen(
     val recommendedProducts = productList.filter { product ->
         product.labels.any { label -> label in userPreferences }
     }
-    println("Recommended products: $recommendedProducts")
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },

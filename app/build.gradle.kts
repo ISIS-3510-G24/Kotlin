@@ -65,4 +65,5 @@ dependencies {
     implementation(libs.coil)
     implementation(libs.firestore)
     implementation(libs.firebase.storage)
+    implementation(libs.androidx.material.icons.extended)
 }
