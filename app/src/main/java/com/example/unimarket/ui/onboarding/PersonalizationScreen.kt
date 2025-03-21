@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 fun PersonalizationScreen(
     onFinishPersonalization: () -> Unit
 ) {
-    // Example list of interests (puedes personalizar esta lista)
+    // Example list of interests
     val interests = listOf(
         "Sell Items",
         "Turbo Delivery",
