@@ -19,12 +19,16 @@ import com.example.unimarket.ui.onboarding.OnboardingScreen
 import com.example.unimarket.ui.onboarding.PersonalizationScreen
 import com.example.unimarket.ui.register.RegisterScreen
 import com.example.unimarket.ui.theme.UniMarketTheme
+import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        FirebaseAnalytics.getInstance(this).logEvent("app_open", Bundle())
+
         setContent {
             UniMarketTheme {
                 Scaffold {
