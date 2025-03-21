@@ -5,11 +5,13 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Bundle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import com.google.firebase.analytics.FirebaseAnalytics
 import kotlin.math.sqrt
 
 @Composable
@@ -41,6 +43,11 @@ fun ShakeDetector(
                         val now = System.currentTimeMillis()
                         if (now - lastShakeTime.value > shakeTimeWindow) {
                             lastShakeTime.value = now
+
+                            // Log shake event to Firebase Analytics
+                            FirebaseAnalytics.getInstance(context)
+                                .logEvent("shake_detected", Bundle())
+
                             onShake() // Trigger the shake callback
                         }
                     }
