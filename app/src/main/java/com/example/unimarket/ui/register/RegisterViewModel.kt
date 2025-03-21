@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.storage.FirebaseStorage
@@ -45,10 +46,12 @@ class RegisterViewModel : ViewModel() {
                     profilePictureUrl.value = uri.toString()
                     onComplete(true)
                 }.addOnFailureListener {
+                    FirebaseCrashlytics.getInstance().recordException(it)
                     onComplete(false)
                 }
             }
             .addOnFailureListener {
+                FirebaseCrashlytics.getInstance().recordException(it)
                 onComplete(false)
             }
     }
