@@ -26,9 +26,30 @@ import com.example.unimarket.R
 fun FindOfferScreen(
     onNavigateToProductDetail: (String) -> Unit
 ) {
-    // State to show/hide search TextField
+    // State to handle showing the "Bad news" alert dialog
+    var showBadNewsDialog by remember { mutableStateOf(true) }
+
+    // State to show/hide the search TextField
     var isSearchVisible by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
+
+    // Alert dialog that appears automatically when the screen is opened
+    if (showBadNewsDialog) {
+        AlertDialog(
+            onDismissRequest = { showBadNewsDialog = false },
+            title = { Text("We have bad news :,(") },
+            text = {
+                Text(
+                    "The product with ID: 135798642 which was on your wishlist has been offered to other user."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showBadNewsDialog = false }) {
+                    Text("Accept")
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -36,7 +57,7 @@ fun FindOfferScreen(
             .fillMaxHeight()
             .verticalScroll(rememberScrollState())
     ) {
-        // TopBar with "Find" and "Offer" buttons and a search icon
+        // TopBar with "Find," "Offer" buttons and the search icon/field
         TopBarWithSearch(
             isSearchVisible = isSearchVisible,
             searchText = searchText,
@@ -50,7 +71,7 @@ fun FindOfferScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Categories in horizontal scroll
+        // Categories in a horizontal scroll
         LazyRow(
             modifier = Modifier
                 .fillMaxWidth()
@@ -94,7 +115,7 @@ fun FindOfferScreen(
                     imageSize = 180.dp
                 )
             }
-        // Second product
+            // Second product
             item {
                 ProductCard(
                     title = "USB",
@@ -170,7 +191,7 @@ fun FindOfferScreen(
 }
 
 /**
- * Top bar with the "Find," "Offer" buttons, and the search icon (or field) on the right.
+ * Top bar with "Find," "Offer" buttons, and a search icon/field on the right.
  */
 @Composable
 fun TopBarWithSearch(
@@ -206,7 +227,6 @@ fun TopBarWithSearch(
 
         // Right section: search icon or TextField
         if (!isSearchVisible) {
-            // Search icon
             IconButton(onClick = onSearchClick) {
                 Icon(
                     imageVector = Icons.Default.Search,
@@ -214,7 +234,6 @@ fun TopBarWithSearch(
                 )
             }
         } else {
-            // Displays TextField and a button to close the search
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextField(
                     value = searchText,
@@ -237,7 +256,7 @@ fun TopBarWithSearch(
 }
 
 /**
- * Vertical card for large products with Buy button).
+ * Vertical card for large products (image at the top, text on the left, "Buy" button below).
  */
 @Composable
 fun ProductCard(
@@ -254,12 +273,14 @@ fun ProductCard(
         modifier = Modifier.size(width = cardWidth, height = cardHeight),
         onClick = onClick
     ) {
+        // Main card structure
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(8.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
+            // Center the image horizontally
             Box(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
@@ -271,6 +292,7 @@ fun ProductCard(
                 )
             }
 
+            // Align text to the left
             Column(
                 modifier = Modifier.padding(top = 4.dp),
                 horizontalAlignment = Alignment.Start
@@ -287,6 +309,7 @@ fun ProductCard(
                 )
             }
 
+            // "Buy" button (if showBuyButton is true)
             if (showBuyButton) {
                 Button(
                     onClick = onClick,
@@ -300,7 +323,7 @@ fun ProductCard(
 }
 
 /**
- * Horizontal card: image on the left and text next
+ * Horizontal card: image on the left, text in the middle, arrow on the right.
  */
 @Composable
 fun HorizontalProductCard(
@@ -335,7 +358,7 @@ fun HorizontalProductCard(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Text in the center
+            // Text in the middle (title + subtitle)
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center
