@@ -68,4 +68,5 @@ dependencies {
     implementation(libs.firebase.storage)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.analytics.ktx)
 }
