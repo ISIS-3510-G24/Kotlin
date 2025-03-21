@@ -5,11 +5,13 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Bundle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import com.google.firebase.analytics.FirebaseAnalytics
 import kotlin.math.sqrt
 
 @Composable
@@ -21,8 +23,8 @@ fun ShakeDetector(
     val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     // Get the default accelerometer sensor
     val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-    // Threshold for shake detection
-    val shakeThreshold = 12f
+    // Updated threshold for shake detection (increased for lower sensitivity)
+    val shakeThreshold = 16f
     // Minimum time between shake events in milliseconds
     val shakeTimeWindow = 500L
     val lastShakeTime = remember { mutableStateOf(0L) }
@@ -41,6 +43,11 @@ fun ShakeDetector(
                         val now = System.currentTimeMillis()
                         if (now - lastShakeTime.value > shakeTimeWindow) {
                             lastShakeTime.value = now
+
+                            // Log shake event to Firebase Analytics
+                            FirebaseAnalytics.getInstance(context)
+                                .logEvent("shake_detected", Bundle())
+
                             onShake() // Trigger the shake callback
                         }
                     }

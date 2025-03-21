@@ -1,5 +1,6 @@
 package com.example.unimarket.ui.onboarding
 
+import android.os.Bundle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,14 +18,23 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.example.unimarket.ui.data.PreferencesManager
+import com.google.firebase.analytics.FirebaseAnalytics
+import kotlinx.coroutines.launch
+
 
 @Composable
 fun PersonalizationScreen(
     onFinishPersonalization: () -> Unit
 ) {
-    // Example list of interests (puedes personalizar esta lista)
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    // Example list of interests
     val interests = listOf(
         "Sell Items",
         "Turbo Delivery",
@@ -86,6 +96,11 @@ fun PersonalizationScreen(
         Button(
             onClick = {
                 // Optionally save preferences here
+                coroutineScope.launch {
+                    PreferencesManager.setOnboardingCompleted(context, true)
+                }
+                FirebaseAnalytics.getInstance(context)
+                    .logEvent("personalization_complete", Bundle())
                 onFinishPersonalization()
             },
             modifier = Modifier.fillMaxWidth()

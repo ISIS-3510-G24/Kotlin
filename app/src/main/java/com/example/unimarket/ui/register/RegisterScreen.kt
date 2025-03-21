@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +68,7 @@ fun RegisterScreen(
                 majorsList = result.documents.mapNotNull { it.getString("name") }
             }
             .addOnFailureListener {
+                FirebaseCrashlytics.getInstance().recordException(it)
                 majorsList = emptyList()
             }
     }
@@ -100,8 +103,8 @@ fun RegisterScreen(
         )
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(150.dp),
+                .size(100.dp)
+                .align(Alignment.CenterHorizontally),
             contentAlignment = Alignment.Center
         ) {
             val painter = rememberAsyncImagePainter(model = viewModel.profilePictureUrl.value)
@@ -154,6 +157,9 @@ fun RegisterScreen(
                 onValueChange = { /* No direct editing */ },
                 readOnly = true,
                 label = { Text("Major") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(),
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = majorDropdownExpanded) },
             )
             ExposedDropdownMenu(
@@ -245,4 +251,3 @@ fun RegisterScreen(
         }
     }
 }
-

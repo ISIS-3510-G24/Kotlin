@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics") version "3.0.3"
 }
 
 android {
@@ -65,4 +66,8 @@ dependencies {
     implementation(libs.coil)
     implementation(libs.firestore)
     implementation(libs.firebase.storage)
+    implementation(libs.androidx.material.icons.extended)
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.analytics.ktx)
+    implementation(libs.firebase.perf)
 }
