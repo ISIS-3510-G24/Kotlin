@@ -7,6 +7,8 @@ import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.ktx.Firebase
+import com.google.firebase.perf.FirebasePerformance
+import com.google.firebase.perf.metrics.Trace
 
 class LoginViewModel : ViewModel() {
     val loginSuccess = mutableStateOf<Boolean?>(null)
@@ -19,8 +21,13 @@ class LoginViewModel : ViewModel() {
     }
 
     fun loginUser(email: String, password: String) {
+        val loginTrace: Trace = FirebasePerformance.getInstance().newTrace("login_trace")
+        loginTrace.start()
+
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
+                // Stop the trace when the task is complete
+                loginTrace.stop()
                 if (task.isSuccessful) {
                     loginSuccess.value = true
 
