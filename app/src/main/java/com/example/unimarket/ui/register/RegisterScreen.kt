@@ -154,6 +154,9 @@ fun RegisterScreen(
                 onValueChange = { /* No direct editing */ },
                 readOnly = true,
                 label = { Text("Major") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(),
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = majorDropdownExpanded) },
             )
             ExposedDropdownMenu(
@@ -245,4 +248,3 @@ fun RegisterScreen(
         }
     }
 }
-
