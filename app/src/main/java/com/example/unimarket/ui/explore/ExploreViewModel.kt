@@ -2,6 +2,7 @@ package com.example.unimarket.ui.explore
 
 import androidx.lifecycle.ViewModel
 import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -17,8 +18,13 @@ class ExploreViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    // User preferences for filtering products
+    private val _userPreferences = MutableStateFlow<List<String>>(emptyList())
+    val userPreferences: StateFlow<List<String>> = _userPreferences
+
     init {
         loadProductsFromFirestore()
+        loadUserPreferences()
     }
 
     // This function fetches products from Firestore
@@ -40,8 +46,45 @@ class ExploreViewModel : ViewModel() {
             }
     }
 
+    private fun loadUserPreferences() {
+        // Get user preferences from Firestore
+        val currentUserId = getCurrentUserId()
+        FirebaseFirestoreSingleton.getCollection("User")
+            .document(currentUserId)
+            .get()
+            .addOnSuccessListener { document ->
+                val user = document.toObject(User::class.java)
+                _userPreferences.value = user?.preferences ?: emptyList()
+            }
+            .addOnFailureListener { exception ->
+                _errorMessage.value = "Error loading user preferences: ${exception.message}"
+            }
+    }
+
     // Public function to refresh products (when a shake gesture is detected)
     fun refreshProducts() {
         loadProductsFromFirestore()
+    }
+
+    fun publishProduct(
+        product: Product,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        _isLoading.value = true
+        FirebaseFirestoreSingleton.getCollection("Product")
+            .add(product)
+            .addOnSuccessListener {
+                loadProductsFromFirestore()
+                onSuccess()
+            }
+            .addOnFailureListener { exception ->
+                onFailure("Error publishing product: ${exception.message}")
+                _isLoading.value = false
+            }
+    }
+
+    fun getCurrentUserId(): String {
+        return FirebaseAuth.getInstance().currentUser?.uid ?: "defaultUserId"
     }
 }
