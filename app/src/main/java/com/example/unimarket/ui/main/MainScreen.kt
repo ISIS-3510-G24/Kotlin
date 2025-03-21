@@ -1,22 +1,24 @@
 package com.example.unimarket.ui.main
 
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.MailOutline
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material3.*
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.compose.foundation.layout.*
+import com.example.unimarket.ui.explore.ExploreScreen
+import com.example.unimarket.ui.explore.PublishProductScreen
+import com.example.unimarket.ui.findOffer.FindOfferScreen
 import com.example.unimarket.ui.navigation.BottomNavBar
 import com.example.unimarket.ui.navigation.BottomNavItem
-import com.example.unimarket.ui.explore.ExploreScreen
-import com.example.unimarket.ui.findOffer.FindOfferScreen
+
 //import com.example.unimarket.ui.orders.OrdersScreen
 //import com.example.unimarket.ui.chat.ChatScreen
 //import com.example.unimarket.ui.profile.ProfileScreen
@@ -53,9 +55,10 @@ fun MainScreen() {
                         }
                     )
                 }
-            composable("explore") { ExploreScreen() }
+            composable("explore") { ExploreScreen(navController) }
             //composable("chat") { ChatScreen() }
             //composable("profile") { ProfileScreen() }
+            composable("publish") { PublishProductScreen(navController) }
         }
     }
 }

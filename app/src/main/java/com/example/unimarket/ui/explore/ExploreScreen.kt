@@ -9,11 +9,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -30,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.ui.sensor.ShakeDetector
 import kotlinx.coroutines.delay
@@ -37,10 +42,11 @@ import kotlinx.coroutines.launch
 
 // ExploreViewModel should include a loading state and a refreshProducts() method.
 @Composable
-fun ExploreScreen(exploreViewModel: ExploreViewModel = viewModel()) {
+fun ExploreScreen(navController: NavController ,exploreViewModel: ExploreViewModel = viewModel()) {
     val productList by exploreViewModel.products.collectAsState()
     val errorMessage by exploreViewModel.errorMessage.collectAsState()
     val isLoading by exploreViewModel.isLoading.collectAsState()
+    val userPreferences by exploreViewModel.userPreferences.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
@@ -70,9 +76,20 @@ fun ExploreScreen(exploreViewModel: ExploreViewModel = viewModel()) {
         }
     }
 
+    val recommendedProducts = productList.filter { product ->
+        product.labels.any { label -> label in userPreferences }
+    }
+
     // Scaffold that includes a SnackbarHost for showing messages
     Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        floatingActionButton = {
+            FloatingActionButton(onClick = {
+                navController.navigate("publish")
+            }) {
+                Icon(Icons.Default.Add, contentDescription = "Publish Product")
+            }
+        }
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -91,10 +108,32 @@ fun ExploreScreen(exploreViewModel: ExploreViewModel = viewModel()) {
                             modifier = Modifier.padding(16.dp)
                         )
                     }
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+
+                    // Recommended products
+                    Text(
+                        text = "Recommended for you",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(start = 16.dp, top = 16.dp)
+                    )
+
+                    LazyRow (
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(recommendedProducts) { product ->
+                            ProductCard(product)
+                        }
+                    }
+
+                    // All products
+                    Text(
+                        text = "All Products",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(start = 16.dp, top = 16.dp)
+                    )
+                    LazyRow (
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(productList) { product ->
                             ProductCard(product)
