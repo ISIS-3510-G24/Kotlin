@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,6 +68,7 @@ fun RegisterScreen(
                 majorsList = result.documents.mapNotNull { it.getString("name") }
             }
             .addOnFailureListener {
+                FirebaseCrashlytics.getInstance().recordException(it)
                 majorsList = emptyList()
             }
     }

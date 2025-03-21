@@ -3,6 +3,7 @@ package com.example.unimarket.ui.explore
 import androidx.lifecycle.ViewModel
 import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -41,6 +42,7 @@ class ExploreViewModel : ViewModel() {
                 _isLoading.value = false // Data loaded, set loading state to false
             }
             .addOnFailureListener { exception ->
+                FirebaseCrashlytics.getInstance().recordException(exception)
                 _errorMessage.value = "Error loading products: ${exception.message}"
                 _isLoading.value = false // Error occurred, set loading state to false
             }
@@ -57,6 +59,7 @@ class ExploreViewModel : ViewModel() {
                 _userPreferences.value = user?.preferences ?: emptyList()
             }
             .addOnFailureListener { exception ->
+                FirebaseCrashlytics.getInstance().recordException(exception)
                 _errorMessage.value = "Error loading user preferences: ${exception.message}"
             }
     }
@@ -79,6 +82,7 @@ class ExploreViewModel : ViewModel() {
                 onSuccess()
             }
             .addOnFailureListener { exception ->
+                FirebaseCrashlytics.getInstance().recordException(exception)
                 onFailure("Error publishing product: ${exception.message}")
                 _isLoading.value = false
             }
