@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.*
 import com.example.unimarket.ui.navigation.BottomNavBar
 import com.example.unimarket.ui.navigation.BottomNavItem
 import com.example.unimarket.ui.explore.ExploreScreen
-//import com.example.unimarket.ui.findoffer.FindOfferScreen
+import com.example.unimarket.ui.findOffer.FindOfferScreen
 //import com.example.unimarket.ui.orders.OrdersScreen
 //import com.example.unimarket.ui.chat.ChatScreen
 //import com.example.unimarket.ui.profile.ProfileScreen
@@ -48,7 +48,11 @@ fun MainScreen() {
             modifier = Modifier.padding(innerPadding)
         ) {
             //composable("orders") { OrdersScreen() }
-            //composable("find_offer") { FindOfferScreen() }
+                composable("find_offer") {
+                    FindOfferScreen(onNavigateToProductDetail = { productId ->
+                        }
+                    )
+                }
             composable("explore") { ExploreScreen() }
             //composable("chat") { ChatScreen() }
             //composable("profile") { ProfileScreen() }
