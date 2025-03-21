@@ -1,5 +1,6 @@
 package com.example.unimarket.ui.onboarding
 
+import android.os.Bundle
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.unimarket.R
 import com.example.unimarket.ui.data.PreferencesManager
+import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.launch
 
 // Data class for onboarding pages
@@ -154,6 +156,8 @@ fun OnboardingScreen(
             onClick = {
                 if (currentPage == pages.lastIndex) {
                     // Mark onboarding as completed on last page
+                    FirebaseAnalytics.getInstance(context)
+                        .logEvent("onboarding_complete", Bundle())
                     onFinishOnboarding()
                 } else {
                     currentPage++

@@ -1,5 +1,6 @@
 package com.example.unimarket.ui.onboarding
 
+import android.os.Bundle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.unimarket.ui.data.PreferencesManager
+import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.launch
 
 
@@ -97,6 +99,8 @@ fun PersonalizationScreen(
                 coroutineScope.launch {
                     PreferencesManager.setOnboardingCompleted(context, true)
                 }
+                FirebaseAnalytics.getInstance(context)
+                    .logEvent("personalization_complete", Bundle())
                 onFinishPersonalization()
             },
             modifier = Modifier.fillMaxWidth()
