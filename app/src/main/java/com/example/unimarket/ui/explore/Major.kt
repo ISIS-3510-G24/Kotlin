@@ -1,6 +1,6 @@
 package com.example.unimarket.ui.explore
 
 data class Major(
-    val majorID: String = "",
+    val id: String = "",
     val name: String = ""
 )
