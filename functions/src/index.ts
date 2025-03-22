@@ -16,8 +16,7 @@ export const sendProductNotification = onDocumentCreated(
       notification: {
         title: 'New Product Published!',
         body: `Check out the product: ${product.title}`,
-        // Si no tienes una lógica específica, puedes dejar click_action como placeholder o eliminarlo.
-        click_action: 'FLUTTER_NOTIFICATION_CLICK'
+        click_action: 'KOTLIN_NOTIFICATION_CLICK' // This is the action that will be triggered when the notification is clicked
       }
     };
 
