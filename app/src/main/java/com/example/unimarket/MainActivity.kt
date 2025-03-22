@@ -24,6 +24,7 @@ import com.example.unimarket.ui.theme.UniMarketTheme
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.messaging.FirebaseMessaging
 
 class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -35,6 +36,15 @@ class MainActivity : ComponentActivity() {
 
         FirebaseCrashlytics.getInstance().setCustomKey("os_version", Build.VERSION.RELEASE)
         FirebaseCrashlytics.getInstance().setCustomKey("device", "${Build.MANUFACTURER} ${Build.MODEL}")
+
+        FirebaseMessaging.getInstance().subscribeToTopic("new_products")
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d("FCM", "Subscribed to new_products topic successfully.")
+                } else {
+                    Log.e("FCM", "Failed to subscribe: ${task.exception?.message}")
+                }
+            }
 
         val notificationClicked = intent?.action == "KOTLIN_NOTIFICATION_CLICK"
         if (notificationClicked) {

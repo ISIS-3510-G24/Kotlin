@@ -24,6 +24,7 @@ material3 = "1.3.1"
 firebaseCrashlytics = "19.4.2"
 firebaseAnalytics = "22.4.0"
 firebasePerformance = "21.0.5"
+firebaseMessaging = "24.1.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -57,6 +58,7 @@ coil = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 firebase-analytics-ktx = { module = "com.google.firebase:firebase-analytics-ktx", version.ref = "firebase-analytics-ktx" }
 storage = { module = "com.google.firebase:firebase-storage", version.ref = "storage" }
 firebase-performance = { module = "com.google.firebase:firebase-perf", version.ref = "firebasePerformance" }
+firebase-messaging = { module = "com.google.firebase:firebase-messaging", version.ref = "firebaseMessaging" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
