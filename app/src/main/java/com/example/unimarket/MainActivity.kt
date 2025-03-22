@@ -1,29 +1,44 @@
 package com.example.unimarket
 
+import android.annotation.SuppressLint
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.unimarket.ui.data.PreferencesManager
+import com.example.unimarket.ui.login.LoginScreen
+import com.example.unimarket.ui.main.MainScreen
+import com.example.unimarket.ui.onboarding.OnboardingScreen
+import com.example.unimarket.ui.onboarding.PersonalizationScreen
+import com.example.unimarket.ui.register.RegisterScreen
 import com.example.unimarket.ui.theme.UniMarketTheme
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 
 class MainActivity : ComponentActivity() {
+    @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
+        FirebaseAnalytics.getInstance(this).logEvent("app_open", Bundle())
+
+
+        FirebaseCrashlytics.getInstance().setCustomKey("os_version", Build.VERSION.RELEASE)
+        FirebaseCrashlytics.getInstance().setCustomKey("device", "${Build.MANUFACTURER} ${Build.MODEL}")
+
         setContent {
             UniMarketTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                Scaffold {
+                    AppNavigation()
                 }
             }
         }
@@ -31,17 +46,77 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+fun AppNavigation() {
+    val navController = rememberNavController()
+    val context = LocalContext.current
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    UniMarketTheme {
-        Greeting("Android")
+    // Observe onboarding completion from DataStore
+    val onboardingCompletedFlow = PreferencesManager.isOnboardingCompleted(context)
+    val onboardingCompleted by onboardingCompletedFlow.collectAsState(initial = false)
+
+    // Check if user is authenticated
+    val currentUser = FirebaseAuth.getInstance().currentUser
+
+    // Set startDestination based on whether onboarding and authentication status
+    val startDestination = if (!onboardingCompleted) {
+        "onboarding"
+    } else {
+        if (currentUser != null) "main" else "login"
+    }
+
+    NavHost(navController = navController, startDestination = startDestination)
+    {
+        composable("onboarding") {
+            OnboardingScreen(
+                onFinishOnboarding = {
+                    // Navigate to personalization after finishing onboarding
+                    navController.navigate("personalization") {
+                        popUpTo("onboarding") { inclusive = true }
+                    }
+                },
+                onSkip = {
+                    // Skip onboarding and navigate to login
+                    navController.navigate("login") {
+                        popUpTo("onboarding") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable("personalization") {
+            PersonalizationScreen(
+                onFinishPersonalization = {
+                    // After personalization, navigate to login
+                    navController.navigate("login") {
+                        popUpTo("personalization") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable("login") {
+            LoginScreen(
+                onLoginSuccess = {
+                    navController.navigate("main") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                },
+                onNavigateToRegister = { navController.navigate("register") }
+            )
+        }
+        composable("register") {
+            RegisterScreen(
+                onRegisterSuccess = {
+                    // You can choose to either:
+                    // 1) Go back to the login screen:
+                    navController.popBackStack()
+                    // 2) Go to the home screen:
+                    // navController.navigate("home") { popUpTo("login") { inclusive = true } }
+                }
+            )
+        }
+        composable("main") {
+            MainScreen()
+        }
     }
 }
