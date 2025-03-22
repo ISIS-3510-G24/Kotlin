@@ -13,29 +13,68 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.unimarket.R
+import coil.compose.rememberAsyncImagePainter
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
+
+// Data class matching the structure of documents in the "finds" collection
+data class FindItem(
+    val id: String = "",
+    val title: String = "",
+    val description: String = "",
+    val image: String = "",
+    val status: String = "",
+    val major: String = "",
+    val offerCount: Int = 0
+)
 
 @Composable
 fun FindOfferScreen(
     onNavigateToProductDetail: (String) -> Unit
 ) {
+    // State for storing Firestore data
+    var findList by remember { mutableStateOf(listOf<FindItem>()) }
+
+    LaunchedEffect(Unit) {
+        val db = Firebase.firestore
+        db.collection("finds")
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                val items = querySnapshot.documents.map { doc ->
+                    FindItem(
+                        id = doc.id,
+                        title = doc.getString("title") ?: "",
+                        description = doc.getString("description") ?: "",
+                        image = doc.getString("image") ?: "",
+                        status = doc.getString("status") ?: "",
+                        major = doc.getString("major") ?: "",
+                        offerCount = doc.getLong("offerCount")?.toInt() ?: 0
+                    )
+                }
+                findList = items
+            }
+            .addOnFailureListener {
+                // handle error if needed
+            }
+    }
+
+    // UI states for your existing features
     var showBadNewsDialog by remember { mutableStateOf(true) }
     var showGreetingBanner by remember { mutableStateOf(false) }
     var isSearchVisible by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
 
-    // Function to trigger the greeting banner based on time of the device
+    // A function to show the greeting banner based on device time
     fun triggerGreetingBannerIfNeeded() {
         val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         if (currentHour in 20..23) {
@@ -47,13 +86,15 @@ fun FindOfferScreen(
         }
     }
 
-    // Show the bad news AlertDialog if needed
+    // "Bad news" dialog
     if (showBadNewsDialog) {
         AlertDialog(
             onDismissRequest = { showBadNewsDialog = false },
             title = { Text("We have bad news :,(") },
             text = {
-                Text("The product with ID: 135798642 which was on your wishlist has been offered to another user.")
+                Text(
+                    "The product with ID: 135798642 which was on your wishlist has been offered to another user."
+                )
             },
             confirmButton = {
                 TextButton(
@@ -68,9 +109,9 @@ fun FindOfferScreen(
         )
     }
 
-    // Main container using Box to overlay the greeting banner at the top
+    // Main container using Box to overlay the greeting banner
     Box(modifier = Modifier.fillMaxSize()) {
-        // Greeting banner placed at the top center
+        // Greeting banner at the top center if condition is met
         if (showGreetingBanner) {
             Surface(
                 modifier = Modifier
@@ -89,7 +130,7 @@ fun FindOfferScreen(
             }
         }
 
-        // Main content placed below the banner (or at the top if banner is hidden)
+        // Main content below the banner
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -97,7 +138,7 @@ fun FindOfferScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(top = if (showGreetingBanner) 130.dp else 0.dp)
         ) {
-            // TopBar with "Find", "Offer" buttons and search icon/field
+            // TopBar with "New Find" button and search icon/field
             TopBarWithSearch(
                 isSearchVisible = isSearchVisible,
                 searchText = searchText,
@@ -119,7 +160,12 @@ fun FindOfferScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp)
             ) {
-                items(listOf("ALL REQUESTS", "MATERIALS", "TECHNOLOGY", "SPORTS", "BOOKS", "MUSICAL INSTRUMENTS", "SUITS", "TOYS")) { cat ->
+                items(
+                    listOf(
+                        "ALL REQUESTS", "MATERIALS", "TECHNOLOGY",
+                        "SPORTS", "BOOKS", "MUSICAL INSTRUMENTS", "SUITS", "TOYS"
+                    )
+                ) { cat ->
                     Text(
                         text = cat,
                         style = MaterialTheme.typography.bodyMedium
@@ -129,12 +175,13 @@ fun FindOfferScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // "From your major" section with large cards in LazyRow
+            // "All" section
             Text(
-                text = "From your major",
+                text = "All",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
+            val allItems = findList.take(4)
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -142,30 +189,16 @@ fun FindOfferScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp)
             ) {
-                // First product
-                item {
+                items(allItems) { product ->
                     ProductCard(
-                        title = "Computer",
-                        date = "Lenovo",
-                        imageRes = R.drawable.findoffer1,
-                        showBuyButton = true,
-                        onClick = { onNavigateToProductDetail("computerId") },
+                        title = product.title,
+                        date = product.description,
+                        imageUrl = product.image,
+                        showFindButton = true,
+                        showOfferButton = true,
+                        onClick = { onNavigateToProductDetail(product.id) },
                         cardWidth = 260.dp,
-                        cardHeight = 280.dp,
-                        imageSize = 180.dp
-                    )
-                }
-                // Second product
-                item {
-                    ProductCard(
-                        title = "USB",
-                        date = "Type C",
-                        imageRes = R.drawable.findoffer2,
-                        showBuyButton = true,
-                        onClick = { onNavigateToProductDetail("usbId") },
-                        cardWidth = 260.dp,
-                        cardHeight = 280.dp,
-                        imageSize = 180.dp
+                        imageHeight = 220.dp
                     )
                 }
             }
@@ -178,27 +211,50 @@ fun FindOfferScreen(
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
+            val wishlistItems = findList.takeLast(2)
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp)
             ) {
-                HorizontalProductCard(
-                    title = "Set pink rulers",
-                    subtitle = "Pink reference",
-                    imageRes = R.drawable.findoffer3,
-                    onClick = { onNavigateToProductDetail("pinkRulersId") }
-                )
-                HorizontalProductCard(
-                    title = "Pink scissors",
-                    subtitle = "Any reference",
-                    imageRes = R.drawable.findoffer4,
-                    onClick = { onNavigateToProductDetail("pinkScissorsId") }
-                )
+                wishlistItems.forEach { product ->
+                    HorizontalProductCard(
+                        title = product.title,
+                        subtitle = product.description,
+                        imageUrl = product.image,
+                        onClick = { onNavigateToProductDetail(product.id) }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // "From Your Major" section
+            Text(
+                text = "From Your Major",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            val fromYourMajorItems = findList.take(2)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+            ) {
+                fromYourMajorItems.forEach { product ->
+                    HorizontalProductCard(
+                        title = product.title,
+                        subtitle = product.description,
+                        imageUrl = product.image,
+                        onClick = { onNavigateToProductDetail(product.id) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
 
             // "Selling out" section
             Text(
@@ -206,24 +262,21 @@ fun FindOfferScreen(
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
+            val sellingOutItems = findList.take(2)
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp)
             ) {
-                HorizontalProductCard(
-                    title = "Calculator",
-                    subtitle = "CASIO",
-                    imageRes = R.drawable.findoffer5,
-                    onClick = { onNavigateToProductDetail("calculatorCasioId") }
-                )
-                HorizontalProductCard(
-                    title = "Calculator",
-                    subtitle = "Sharp",
-                    imageRes = R.drawable.findoffer6,
-                    onClick = { onNavigateToProductDetail("calculatorSharpId") }
-                )
+                sellingOutItems.forEach { product ->
+                    HorizontalProductCard(
+                        title = product.title,
+                        subtitle = product.description,
+                        imageUrl = product.image,
+                        onClick = { onNavigateToProductDetail(product.id) }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -232,7 +285,7 @@ fun FindOfferScreen(
 }
 
 /**
- * Top bar with the "Find", "Offer" buttons and the search icon/field on the right.
+ * Top bar with "Find", "Offer" and a search icon or field on the right.
  */
 @Composable
 fun TopBarWithSearch(
@@ -249,23 +302,16 @@ fun TopBarWithSearch(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Left section: "Find" and "Offer" buttons
+        // "New Find Button"
         Row(verticalAlignment = Alignment.CenterVertically) {
             Button(
-                onClick = { /* Logic for 'Find' */ },
+                onClick = { /* Logic for 'New Find' */ },
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                Text("FIND")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(
-                onClick = { /* Logic for 'Offer' */ },
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                Text("OFFER")
+                Text("NEW FIND")
             }
         }
-        // Right section: search icon or TextField
+
         if (!isSearchVisible) {
             IconButton(onClick = onSearchClick) {
                 Icon(
@@ -296,43 +342,56 @@ fun TopBarWithSearch(
 }
 
 /**
- * Vertical card for large products (image at the top, left-aligned text, and "Buy" button below).
+ * Vertical card for large products (using Coil).
+ * We let the card wrap its height by using width(...) + wrapContentHeight().
  */
 @Composable
 fun ProductCard(
     title: String,
     date: String,
-    imageRes: Int,
-    showBuyButton: Boolean = true,
+    imageUrl: String,
+    showFindButton: Boolean = true,
+    showOfferButton: Boolean = true,
     onClick: () -> Unit,
-    cardWidth: Dp = 150.dp,
-    cardHeight: Dp = 180.dp,
-    imageSize: Dp = 80.dp
+    cardWidth: Dp = 260.dp,
+    imageHeight: Dp = 200.dp
 ) {
     Card(
-        modifier = Modifier.size(width = cardWidth, height = cardHeight),
+        modifier = Modifier
+            .width(cardWidth)
+            .wrapContentHeight(), // Let the card grow as needed
         onClick = onClick
     ) {
+        // We'll space items by 8dp so the content doesn't get squashed
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(8.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Box to center the image horizontally
+            // 1) The image
             Box(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(imageHeight),
                 contentAlignment = Alignment.Center
             ) {
+                val painter = rememberAsyncImagePainter(
+                    model = imageUrl,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
                 Image(
-                    painter = painterResource(id = imageRes),
+                    painter = painter,
                     contentDescription = "Product Image",
-                    modifier = Modifier.size(imageSize)
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
                 )
             }
-            // Column for left-aligned text
+
+            // 2) The text columns (left-aligned)
             Column(
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.Start
             ) {
                 Text(
@@ -346,13 +405,28 @@ fun ProductCard(
                     textAlign = TextAlign.Start
                 )
             }
-            // "Buy" button (if showBuyButton is true)
-            if (showBuyButton) {
-                Button(
-                    onClick = onClick,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Buy", textAlign = TextAlign.Center)
+
+            // 3) The row for two side-by-side buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (showFindButton) {
+                    Button(
+                        onClick = onClick,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Find", textAlign = TextAlign.Center)
+                    }
+                }
+                if (showOfferButton) {
+                    Button(
+                        onClick = onClick,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Offer", textAlign = TextAlign.Center)
+                    }
                 }
             }
         }
@@ -360,13 +434,13 @@ fun ProductCard(
 }
 
 /**
- * Horizontal card: image on the left, text in the middle, arrow icon on the right.
+ * Horizontal card for products (using Coil).
  */
 @Composable
 fun HorizontalProductCard(
     title: String,
     subtitle: String,
-    imageRes: Int,
+    imageUrl: String,
     onClick: () -> Unit,
     cardHeight: Dp = 80.dp
 ) {
@@ -384,16 +458,21 @@ fun HorizontalProductCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Start
         ) {
-            // Image on the left
+            // Coil image on the left
+            val painter = rememberAsyncImagePainter(
+                model = imageUrl,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
             Image(
-                painter = painterResource(id = imageRes),
+                painter = painter,
                 contentDescription = "Product Image",
                 modifier = Modifier
                     .size(60.dp)
-                    .clip(MaterialTheme.shapes.small)
+                    .clip(MaterialTheme.shapes.small),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
             )
             Spacer(modifier = Modifier.width(12.dp))
-            // Column for text in the middle (title and subtitle)
+            // Middle text
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center
@@ -408,7 +487,7 @@ fun HorizontalProductCard(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
-            // Arrow icon on the right
+            // Right arrow
             IconButton(onClick = onClick) {
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowRight,
