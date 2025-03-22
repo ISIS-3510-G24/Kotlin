@@ -70,4 +70,5 @@ dependencies {
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.analytics.ktx)
     implementation(libs.firebase.perf)
+    implementation(libs.firebase.inappmessaging.display)
 }
