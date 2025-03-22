@@ -3,6 +3,7 @@ package com.example.unimarket
 import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.Scaffold
@@ -35,10 +36,15 @@ class MainActivity : ComponentActivity() {
         FirebaseCrashlytics.getInstance().setCustomKey("os_version", Build.VERSION.RELEASE)
         FirebaseCrashlytics.getInstance().setCustomKey("device", "${Build.MANUFACTURER} ${Build.MODEL}")
 
+        val notificationClicked = intent?.action == "KOTLIN_NOTIFICATION_CLICK"
+        if (notificationClicked) {
+            Log.d("MainActivity", "Opened from notification. Redirecting to Explore screen.", null)
+        }
+
         setContent {
             UniMarketTheme {
                 Scaffold {
-                    AppNavigation()
+                    AppNavigation(notificationClicked = notificationClicked)
                 }
             }
         }
@@ -46,7 +52,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(notificationClicked: Boolean) {
     val navController = rememberNavController()
     val context = LocalContext.current
 
@@ -58,7 +64,9 @@ fun AppNavigation() {
     val currentUser = FirebaseAuth.getInstance().currentUser
 
     // Set startDestination based on whether onboarding and authentication status
-    val startDestination = if (!onboardingCompleted) {
+    val startDestination = if (notificationClicked) {
+        "main"
+    } else if (!onboardingCompleted) {
         "onboarding"
     } else {
         if (currentUser != null) "main" else "login"
