@@ -2,6 +2,7 @@
 agp = "8.9.0"
 datastorePreferences = "1.1.3"
 firebaseBom = "33.11.0"
+firebaseInappmessagingDisplay = "21.0.2"
 gradle = "7.0.4"
 kotlin = "2.0.0"
 coreKtx = "1.15.0"
@@ -24,6 +25,7 @@ material3 = "1.3.1"
 firebaseCrashlytics = "19.4.2"
 firebaseAnalytics = "22.4.0"
 firebasePerformance = "21.0.5"
+firebaseVertexai = "16.3.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -33,6 +35,7 @@ androidx-navigation-compose = { module = "androidx.navigation:navigation-compose
 firebase-analytics = { module = "com.google.firebase:firebase-analytics", version.ref = "firebaseAnalytics" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics", version.ref = "firebaseCrashlytics" }
+firebase-inappmessaging-display = { module = "com.google.firebase:firebase-inappmessaging-display", version.ref = "firebaseInappmessagingDisplay" }
 firebase-perf = { module = "com.google.firebase:firebase-perf" }
 firebase-storage = { module = "com.google.firebase:firebase-storage" }
 google-services = { module = "com.google.gms:google-services", version.ref = "google-services" }
@@ -57,6 +60,7 @@ coil = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 firebase-analytics-ktx = { module = "com.google.firebase:firebase-analytics-ktx", version.ref = "firebase-analytics-ktx" }
 storage = { module = "com.google.firebase:firebase-storage", version.ref = "storage" }
 firebase-performance = { module = "com.google.firebase:firebase-perf", version.ref = "firebasePerformance" }
+firebase-vertexai = { group = "com.google.firebase", name = "firebase-vertexai", version.ref = "firebaseVertexai" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
