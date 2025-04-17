@@ -18,8 +18,7 @@ import com.example.unimarket.ui.explore.PublishProductScreen
 import com.example.unimarket.ui.findOffer.FindOfferScreen
 import com.example.unimarket.ui.navigation.BottomNavBar
 import com.example.unimarket.ui.navigation.BottomNavItem
-
-//import com.example.unimarket.ui.orders.OrdersScreen
+import com.example.unimarket.ui.orders.OrdersScreen
 //import com.example.unimarket.ui.chat.ChatScreen
 //import com.example.unimarket.ui.profile.ProfileScreen
 
@@ -49,12 +48,18 @@ fun MainScreen() {
             startDestination = "explore",
             modifier = Modifier.padding(innerPadding)
         ) {
-            //composable("orders") { OrdersScreen() }
+            //composable("FindAndOffer") { FindAndOfferScreen() }
                 composable("find_offer") {
                     FindOfferScreen(onNavigateToProductDetail = { productId ->
                         }
                     )
                 }
+            // Ruta para la pantalla de Orders
+            composable("orders") {
+                OrdersScreen(onChatClick = { orderId ->
+                    // Aquí puedes agregar la lógica de lo que ocurre cuando se hace click en el chat
+                })
+            }
             composable("explore") { ExploreScreen(navController) }
             //composable("chat") { ChatScreen() }
             //composable("profile") { ProfileScreen() }

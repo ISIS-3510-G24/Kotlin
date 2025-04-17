@@ -25,6 +25,7 @@ material3 = "1.3.1"
 firebaseCrashlytics = "19.4.2"
 firebaseAnalytics = "22.4.0"
 firebasePerformance = "21.0.5"
+firebaseVertexai = "16.3.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -59,6 +60,7 @@ coil = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 firebase-analytics-ktx = { module = "com.google.firebase:firebase-analytics-ktx", version.ref = "firebase-analytics-ktx" }
 storage = { module = "com.google.firebase:firebase-storage", version.ref = "storage" }
 firebase-performance = { module = "com.google.firebase:firebase-perf", version.ref = "firebasePerformance" }
+firebase-vertexai = { group = "com.google.firebase", name = "firebase-vertexai", version.ref = "firebaseVertexai" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
