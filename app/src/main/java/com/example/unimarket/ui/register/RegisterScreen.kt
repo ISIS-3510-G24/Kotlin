@@ -53,8 +53,14 @@ fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
     viewModel: RegisterViewModel = viewModel()
 ) {
+    // State for Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+
+    val displayNameError by viewModel.displayNameError
+    val emailError by viewModel.emailError
+    val passwordError by viewModel.passwordError
+    val confirmPasswordError by viewModel.confirmPasswordError
 
     // Observe registration state
     var isUploadingImage by remember { mutableStateOf(false) }
@@ -146,20 +152,44 @@ fun RegisterScreen(
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = viewModel.displayName.value,
-            onValueChange = { viewModel.displayName.value = it },
+            onValueChange = {
+                viewModel.displayName.value = it
+                viewModel.validateDisplayName(it)
+            },
             label = { Text("Display Name") },
+            isError = displayNameError != null,
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
+        displayNameError?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = viewModel.email.value,
-            onValueChange = { viewModel.email.value = it },
+            onValueChange = {
+                viewModel.email.value = it
+                viewModel.validateEmail(it)
+            },
             label = { Text("Email Address") },
+            isError = emailError != null,
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth()
         )
+        emailError?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = viewModel.bio.value,
@@ -226,23 +256,47 @@ fun RegisterScreen(
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = viewModel.password.value,
-            onValueChange = { viewModel.password.value = it },
+            onValueChange = {
+                viewModel.password.value = it
+                viewModel.validatePassword(it)
+            },
             label = { Text("Create a password") },
+            isError = passwordError != null,
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth()
         )
+        passwordError?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = viewModel.confirmPassword.value,
-            onValueChange = { viewModel.confirmPassword.value = it },
+            onValueChange = {
+                viewModel.confirmPassword.value = it
+                viewModel.validateConfirmPassword(it)
+            },
             label = { Text("Confirm password") },
+            isError = confirmPasswordError != null,
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth()
         )
+        confirmPasswordError?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -261,7 +315,7 @@ fun RegisterScreen(
         Button(
             onClick = { viewModel.registerUser() },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isUploadingImage
+            enabled = !isUploadingImage && viewModel.allInputsValid()
         ) {
             if (isUploadingImage) {
                 Text("Uploading image...")
