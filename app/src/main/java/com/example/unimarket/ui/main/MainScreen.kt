@@ -19,7 +19,7 @@ import com.example.unimarket.ui.findOffer.FindOfferScreen
 import com.example.unimarket.ui.navigation.BottomNavBar
 import com.example.unimarket.ui.navigation.BottomNavItem
 import com.example.unimarket.ui.orders.OrdersScreen
-//import com.example.unimarket.ui.chat.ChatScreen
+import com.example.unimarket.ui.chat.ChatScreen
 //import com.example.unimarket.ui.profile.ProfileScreen
 
 @Composable
@@ -58,6 +58,17 @@ fun MainScreen() {
             composable("orders") {
                 OrdersScreen(onNavigateToOrder = { orderId ->
                   }
+                )
+            }
+            //composable("Chat") { ChatScreen() }
+            composable("chat") {
+                // Aquí pasamos navController y el callback onNavigateToChat
+                ChatScreen(
+                    navController = navController,
+                    onNavigateToChat = { chatId ->
+                        // Por ejemplo, navegar a una pantalla de detalle de chat
+                        navController.navigate("chatDetail/$chatId")
+                    }
                 )
             }
             composable("explore") { ExploreScreen(navController) }
