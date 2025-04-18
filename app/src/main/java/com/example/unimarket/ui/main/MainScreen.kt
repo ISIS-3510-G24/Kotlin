@@ -54,11 +54,11 @@ fun MainScreen() {
                         }
                     )
                 }
-            //composable("Orders") { OrderScreen() }
+            //composable("Orders") { OrdersScreen() }
             composable("orders") {
                 OrdersScreen(onChatClick = { orderId ->
-
-                })
+                  }
+                )
             }
             composable("explore") { ExploreScreen(navController) }
             //composable("chat") { ChatScreen() }
