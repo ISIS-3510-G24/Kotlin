@@ -54,10 +54,10 @@ fun MainScreen() {
                         }
                     )
                 }
-            // Ruta para la pantalla de Orders
+            //composable("Orders") { OrderScreen() }
             composable("orders") {
                 OrdersScreen(onChatClick = { orderId ->
-                    // Aquí puedes agregar la lógica de lo que ocurre cuando se hace click en el chat
+
                 })
             }
             composable("explore") { ExploreScreen(navController) }
