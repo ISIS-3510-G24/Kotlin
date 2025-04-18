@@ -56,7 +56,7 @@ fun MainScreen() {
                 }
             //composable("Orders") { OrdersScreen() }
             composable("orders") {
-                OrdersScreen(onChatClick = { orderId ->
+                OrdersScreen(onNavigatetoOrder = { orderId ->
                   }
                 )
             }

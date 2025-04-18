@@ -40,7 +40,7 @@ data class Order(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OrdersScreen(onChatClick: (String) -> Unit) {
+fun OrdersScreen(onNavigatetoOrder: (String) -> Unit) {
     val db = FirebaseFirestore.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
 
@@ -175,7 +175,7 @@ fun OrdersScreen(onChatClick: (String) -> Unit) {
                 else -> {
                     LazyColumn {
                         items(filteredOrders) { order ->
-                            OrderItem(order = order, onChatClick = onChatClick)
+                            OrderItem(order = order, onNavigatetoOrder = onNavigatetoOrder)
                         }
                     }
                 }
@@ -185,7 +185,7 @@ fun OrdersScreen(onChatClick: (String) -> Unit) {
 }
 
 @Composable
-fun OrderItem(order: Order, onChatClick: (String) -> Unit) {
+fun OrderItem(order: Order, onNavigatetoOrder: (String) -> Unit) {
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
     val priceFormat = remember { NumberFormat.getCurrencyInstance(Locale.getDefault()) }
 
@@ -217,7 +217,7 @@ fun OrderItem(order: Order, onChatClick: (String) -> Unit) {
                 Text("Status: ${order.status}")
             }
 
-            IconButton(onClick = { onChatClick(order.id) }) {
+            IconButton(onClick = { onNavigatetoOrder(order.id) }) {
                 Icon(Icons.Default.Chat, contentDescription = "Chat")
             }
         }
