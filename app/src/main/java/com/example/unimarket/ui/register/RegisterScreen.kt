@@ -25,12 +25,15 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +45,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,9 +53,32 @@ fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
     viewModel: RegisterViewModel = viewModel()
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
     // Observe registration state
+    var isUploadingImage by remember { mutableStateOf(false) }
     val registerSuccessState = viewModel.registerSuccess.value
     val errorMessageState = viewModel.errorMessage.value
+    val profileUrl by viewModel.profilePictureUrl
+
+    // Launcher for image picker
+    val imagePickerLauncher = rememberLauncherForActivityResult(GetContent()) { uri: Uri? ->
+        uri?.let {
+            isUploadingImage = true
+            viewModel.uploadProfilePicture(it) { success ->
+                isUploadingImage = false
+                if (!success) {
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Failed to upload image. Please try again.",
+                            duration = SnackbarDuration.Short
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     LaunchedEffect(registerSuccessState) {
         if (registerSuccessState == true) {
@@ -75,11 +102,6 @@ fun RegisterScreen(
 
     var majorDropdownExpanded by remember { mutableStateOf(false) }
     val allPreferences = listOf("Academics", "Education", "Handcrafts", "Sports", "Wellness")
-    val imagePickerLauncher = rememberLauncherForActivityResult(contract = GetContent()) { uri: Uri? ->
-        uri?.let {
-            viewModel.uploadProfilePicture(it) { success -> }
-        }
-    }
 
     // Wrap content in a Column with verticalScroll
     val scrollState = rememberScrollState()
@@ -107,9 +129,9 @@ fun RegisterScreen(
                 .align(Alignment.CenterHorizontally),
             contentAlignment = Alignment.Center
         ) {
-            val painter = rememberAsyncImagePainter(model = viewModel.profilePictureUrl.value)
+            val painter = rememberAsyncImagePainter(model = profileUrl)
             Image(
-                painter = painter,
+                painter,
                 contentDescription = "Profile Picture",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -238,15 +260,20 @@ fun RegisterScreen(
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = { viewModel.registerUser() },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isUploadingImage
         ) {
-            Text("Sign up")
+            if (isUploadingImage) {
+                Text("Uploading image...")
+            } else {
+                Text("Sign up")
+            }
         }
-        if (errorMessageState != null) {
+
+        errorMessageState?.let {
             Text(
-                text = errorMessageState,
+                text = it,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 8.dp)
             )
         }
     }
