@@ -25,12 +25,15 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +45,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,9 +53,38 @@ fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
     viewModel: RegisterViewModel = viewModel()
 ) {
+    // State for Snackbar
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
+    val displayNameError by viewModel.displayNameError
+    val emailError by viewModel.emailError
+    val passwordError by viewModel.passwordError
+    val confirmPasswordError by viewModel.confirmPasswordError
+
     // Observe registration state
+    var isUploadingImage by remember { mutableStateOf(false) }
     val registerSuccessState = viewModel.registerSuccess.value
     val errorMessageState = viewModel.errorMessage.value
+    val profileUrl by viewModel.profilePictureUrl
+
+    // Launcher for image picker
+    val imagePickerLauncher = rememberLauncherForActivityResult(GetContent()) { uri: Uri? ->
+        uri?.let {
+            isUploadingImage = true
+            viewModel.uploadProfilePicture(it) { success ->
+                isUploadingImage = false
+                if (!success) {
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Failed to upload image. Please try again.",
+                            duration = SnackbarDuration.Short
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     LaunchedEffect(registerSuccessState) {
         if (registerSuccessState == true) {
@@ -75,11 +108,6 @@ fun RegisterScreen(
 
     var majorDropdownExpanded by remember { mutableStateOf(false) }
     val allPreferences = listOf("Academics", "Education", "Handcrafts", "Sports", "Wellness")
-    val imagePickerLauncher = rememberLauncherForActivityResult(contract = GetContent()) { uri: Uri? ->
-        uri?.let {
-            viewModel.uploadProfilePicture(it) { success -> }
-        }
-    }
 
     // Wrap content in a Column with verticalScroll
     val scrollState = rememberScrollState()
@@ -107,9 +135,9 @@ fun RegisterScreen(
                 .align(Alignment.CenterHorizontally),
             contentAlignment = Alignment.Center
         ) {
-            val painter = rememberAsyncImagePainter(model = viewModel.profilePictureUrl.value)
+            val painter = rememberAsyncImagePainter(model = profileUrl)
             Image(
-                painter = painter,
+                painter,
                 contentDescription = "Profile Picture",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -124,20 +152,44 @@ fun RegisterScreen(
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = viewModel.displayName.value,
-            onValueChange = { viewModel.displayName.value = it },
+            onValueChange = {
+                viewModel.displayName.value = it
+                viewModel.validateDisplayName(it)
+            },
             label = { Text("Display Name") },
+            isError = displayNameError != null,
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
+        displayNameError?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = viewModel.email.value,
-            onValueChange = { viewModel.email.value = it },
+            onValueChange = {
+                viewModel.email.value = it
+                viewModel.validateEmail(it)
+            },
             label = { Text("Email Address") },
+            isError = emailError != null,
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth()
         )
+        emailError?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = viewModel.bio.value,
@@ -204,23 +256,47 @@ fun RegisterScreen(
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = viewModel.password.value,
-            onValueChange = { viewModel.password.value = it },
+            onValueChange = {
+                viewModel.password.value = it
+                viewModel.validatePassword(it)
+            },
             label = { Text("Create a password") },
+            isError = passwordError != null,
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth()
         )
+        passwordError?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = viewModel.confirmPassword.value,
-            onValueChange = { viewModel.confirmPassword.value = it },
+            onValueChange = {
+                viewModel.confirmPassword.value = it
+                viewModel.validateConfirmPassword(it)
+            },
             label = { Text("Confirm password") },
+            isError = confirmPasswordError != null,
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth()
         )
+        confirmPasswordError?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -238,15 +314,20 @@ fun RegisterScreen(
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = { viewModel.registerUser() },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isUploadingImage && viewModel.allInputsValid()
         ) {
-            Text("Sign up")
+            if (isUploadingImage) {
+                Text("Uploading image...")
+            } else {
+                Text("Sign up")
+            }
         }
-        if (errorMessageState != null) {
+
+        errorMessageState?.let {
             Text(
-                text = errorMessageState,
+                text = it,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 8.dp)
             )
         }
     }
