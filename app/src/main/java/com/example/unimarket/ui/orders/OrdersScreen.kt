@@ -2,6 +2,7 @@ package com.example.unimarket.ui.orders
 
 import android.util.Log
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,12 +15,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ktx.toObject
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.tasks.await
 import java.text.NumberFormat
@@ -41,7 +40,7 @@ data class Order(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OrdersScreen(onChatClick: (String) -> Unit) {
+fun OrdersScreen(onNavigateToOrder: (String) -> Unit) {
     val db = FirebaseFirestore.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
 
@@ -148,7 +147,9 @@ fun OrdersScreen(onChatClick: (String) -> Unit) {
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+        Box(modifier = Modifier
+            .padding(padding)
+            .fillMaxSize()) {
             when {
                 isLoading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -174,7 +175,7 @@ fun OrdersScreen(onChatClick: (String) -> Unit) {
                 else -> {
                     LazyColumn {
                         items(filteredOrders) { order ->
-                            OrderItem(order = order, onChatClick = onChatClick)
+                            OrderItem(order = order, onNavigateToOrder = onNavigateToOrder)
                         }
                     }
                 }
@@ -184,14 +185,17 @@ fun OrdersScreen(onChatClick: (String) -> Unit) {
 }
 
 @Composable
-fun OrderItem(order: Order, onChatClick: (String) -> Unit) {
+fun OrderItem(order: Order, onNavigateToOrder: (String) -> Unit) {
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
     val priceFormat = remember { NumberFormat.getCurrencyInstance(Locale.getDefault()) }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
+            .padding(8.dp)
+            .clickable {
+                Log.d("OrderItemClick", "Clickeaste: ${order.productTitle}")
+            },
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -213,7 +217,7 @@ fun OrderItem(order: Order, onChatClick: (String) -> Unit) {
                 Text("Status: ${order.status}")
             }
 
-            IconButton(onClick = { onChatClick(order.id) }) {
+            IconButton(onClick = { onNavigateToOrder(order.id) }) {
                 Icon(Icons.Default.Chat, contentDescription = "Chat")
             }
         }
