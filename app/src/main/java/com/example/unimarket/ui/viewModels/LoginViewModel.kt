@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.login
+package com.example.unimarket.ui.viewModels
 
 import android.os.Bundle
 import androidx.compose.runtime.mutableStateOf

@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.chat
+package com.example.unimarket.ui.views
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*

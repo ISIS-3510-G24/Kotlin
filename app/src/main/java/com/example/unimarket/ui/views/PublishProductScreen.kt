@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.explore
+package com.example.unimarket.ui.views
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -37,6 +37,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
+import com.example.unimarket.ui.viewModels.ExploreViewModel
+import com.example.unimarket.ui.models.Major
+import com.example.unimarket.ui.models.Product
 import com.google.firebase.Timestamp
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.launch

@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.main
+package com.example.unimarket.ui.views
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -13,13 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.unimarket.ui.explore.ExploreScreen
-import com.example.unimarket.ui.explore.PublishProductScreen
-import com.example.unimarket.ui.findOffer.FindOfferScreen
-import com.example.unimarket.ui.navigation.BottomNavBar
-import com.example.unimarket.ui.navigation.BottomNavItem
-import com.example.unimarket.ui.orders.OrdersScreen
-import com.example.unimarket.ui.chat.ChatScreen
+import com.example.unimarket.ui.models.BottomNavItem
+
 //import com.example.unimarket.ui.profile.ProfileScreen
 
 @Composable

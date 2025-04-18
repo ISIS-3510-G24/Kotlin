@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.register
+package com.example.unimarket.ui.viewModels
 
 import android.net.Uri
 import android.os.Bundle

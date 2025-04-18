@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.register
+package com.example.unimarket.ui.views
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
+import com.example.unimarket.ui.viewModels.RegisterViewModel
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 
 @OptIn(ExperimentalMaterial3Api::class)
