@@ -57,11 +57,9 @@ fun MainScreen(
                 )
             }
             composable("chat") {
-                // Aquí pasamos navController y el callback onNavigateToChat
                 ChatScreen(
                     navController = navController,
                     onNavigateToChat = { chatId ->
-                        // Por ejemplo, navegar a una pantalla de detalle de chat
                         navController.navigate("chatDetail/$chatId")
                     }
                 )
