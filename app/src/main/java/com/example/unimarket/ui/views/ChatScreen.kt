@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.chat
+package com.example.unimarket.ui.views
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,7 +28,7 @@ fun ChatScreen(
 ) {
     val chats = listOf(
         ChatOverview("chat1", "Yamaha Piano seller", "Hello! Are you available?"),
-        ChatOverview("chat2", "Leather scalpel buyer", "Thank you for the selling."),
+        ChatOverview("chat2", "Leather Scalpel buyer", "Thank you for the selling."),
         ChatOverview("chat3", "Unimarket Support", "How can we help you?")
     )
 
