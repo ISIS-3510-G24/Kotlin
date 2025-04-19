@@ -2,17 +2,12 @@ package com.example.unimarket.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
+import com.example.unimarket.ui.models.ProfileUiState
 import com.example.unimarket.ui.models.User
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-
-data class ProfileUiState(
-    val isLoading: Boolean = true,
-    val user: User? = null,
-    val errorMessage: String? = null
-)
 
 class ProfileViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
