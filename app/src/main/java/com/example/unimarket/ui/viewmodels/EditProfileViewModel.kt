@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class EditProfileViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
-    private val usersRef = FirebaseFirestoreSingleton.getCollection("users")
+    private val usersRef = FirebaseFirestoreSingleton.getCollection("User")
     private val majorsRef = FirebaseFirestoreSingleton.getCollection("majors")
 
     private val _uiState = MutableStateFlow(EditProfileUiState())

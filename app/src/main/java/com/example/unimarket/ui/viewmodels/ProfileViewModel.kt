@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class ProfileViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
-    private val usersRef = FirebaseFirestoreSingleton.getCollection("users")
+    private val usersRef = FirebaseFirestoreSingleton.getCollection("User")
 
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()

@@ -1,4 +1,3 @@
-// ProfileScreen.kt
 package com.example.unimarket.ui.views
 
 import android.os.Bundle
@@ -65,8 +64,7 @@ fun ProfileScreen(
     val analytics = FirebaseAnalytics.getInstance(context)
 
     Scaffold(
-        topBar    = { CenterAlignedTopAppBar(title = { Text("Settings") }) },
-        bottomBar = { BottomNavBar(navController, bottomItems) }
+        topBar = { CenterAlignedTopAppBar(title = { Text("Settings") }) },
     ) { innerPadding ->
         Box(
             Modifier
@@ -77,16 +75,22 @@ fun ProfileScreen(
                 uiState.isLoading -> {
                     CircularProgressIndicator(Modifier.align(Alignment.Center))
                 }
+
                 uiState.errorMessage != null -> {
                     LaunchedEffect(uiState.errorMessage) {
                         Toast.makeText(context, uiState.errorMessage, Toast.LENGTH_LONG).show()
                     }
                 }
+
                 uiState.user != null -> {
                     val u = uiState.user!!
-                    Column(Modifier.fillMaxSize().padding(16.dp)) {
+                    Column(Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)) {
                         // avatar y edit
-                        Box(Modifier.size(100.dp).align(Alignment.CenterHorizontally)) {
+                        Box(Modifier
+                            .size(100.dp)
+                            .align(Alignment.CenterHorizontally)) {
                             Image(
                                 painter = rememberAsyncImagePainter(u.profilePicture),
                                 contentDescription = "Avatar",
@@ -97,23 +101,38 @@ fun ProfileScreen(
                             )
                             IconButton(
                                 onClick = { navController.navigate("edit_profile") },
-                                modifier = Modifier.align(Alignment.BottomEnd).size(24.dp)
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .size(24.dp)
                             ) {
                                 Icon(Icons.Default.Edit, contentDescription = null)
                             }
                         }
 
                         Spacer(Modifier.height(8.dp))
-                        Text(u.displayName, style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.CenterHorizontally))
-                        Text(u.email, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.CenterHorizontally))
+                        Text(
+                            u.displayName,
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                        Text(
+                            u.email,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
 
                         Spacer(Modifier.height(4.dp))
                         Row(
-                            verticalAlignment   = Alignment.CenterVertically,
+                            verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center,
-                            modifier            = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(
+                                Icons.Default.Star,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                             Spacer(Modifier.width(4.dp))
                             Text("${u.ratingAverage} (${u.reviewsCount} reviews)")
                         }
@@ -131,11 +150,18 @@ fun ProfileScreen(
                             items(menu) { (label, route) ->
                                 ListItem(
                                     headlineContent = { Text(label) },
-                                    trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                                    trailingContent = {
+                                        Icon(
+                                            Icons.Default.ChevronRight,
+                                            contentDescription = null
+                                        )
+                                    },
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
-                                            analytics.logEvent("profile_option_clicked", Bundle().apply { putString("option", label) })
+                                            analytics.logEvent(
+                                                "profile_option_clicked",
+                                                Bundle().apply { putString("option", label) })
                                             navController.navigate(route)
                                         }
                                 )
