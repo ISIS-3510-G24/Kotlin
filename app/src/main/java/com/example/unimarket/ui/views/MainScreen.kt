@@ -43,19 +43,16 @@ fun MainScreen() {
             startDestination = "explore",
             modifier = Modifier.padding(innerPadding)
         ) {
-            //composable("FindAndOffer") { FindAndOfferScreen() }
-                composable("find_offer") {
-                    FindOfferScreen(onNavigateToProductDetail = { productId ->
-                        }
-                    )
+            composable("find_offer") {
+                FindOfferScreen(onNavigateToProductDetail = { productId ->
                 }
-            //composable("Orders") { OrdersScreen() }
-            composable("orders") {
-                OrdersScreen(onNavigateToOrder = { orderId ->
-                  }
                 )
             }
-            //composable("Chat") { ChatScreen() }
+            composable("orders") {
+                OrdersScreen(onNavigateToOrder = { orderId ->
+                }
+                )
+            }
             composable("chat") {
                 // Aquí pasamos navController y el callback onNavigateToChat
                 ChatScreen(
@@ -68,7 +65,10 @@ fun MainScreen() {
             }
             composable("explore") { ExploreScreen(navController) }
             //composable("chat") { ChatScreen() }
-            //composable("profile") { ProfileScreen() }
+            composable("profile") { ProfileScreen(
+                navController = navController,
+                bottomItems = bottomNavItems
+            ) }
             composable("publish") { PublishProductScreen(navController) }
         }
     }
