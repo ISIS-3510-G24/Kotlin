@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.findOffer
+package com.example.unimarket.ui.views
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
@@ -16,15 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import java.util.Calendar
 
 // Data class matching the structure of documents in the "finds" collection
 data class FindItem(
@@ -319,13 +317,13 @@ fun ProductCard(
             ) {
                 val painter = rememberAsyncImagePainter(
                     model = imageUrl,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    contentScale = ContentScale.Crop
                 )
                 Image(
                     painter = painter,
                     contentDescription = "Product Image",
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    contentScale = ContentScale.Crop
                 )
             }
 
@@ -401,7 +399,7 @@ fun HorizontalProductCard(
             // Coil image on the left
             val painter = rememberAsyncImagePainter(
                 model = imageUrl,
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                contentScale = ContentScale.Crop
             )
             Image(
                 painter = painter,
@@ -409,7 +407,7 @@ fun HorizontalProductCard(
                 modifier = Modifier
                     .size(60.dp)
                     .clip(MaterialTheme.shapes.small),
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                contentScale = ContentScale.Crop
             )
             Spacer(modifier = Modifier.width(12.dp))
             // Middle text

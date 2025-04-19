@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.main
+package com.example.unimarket.ui.views
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -13,13 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.unimarket.ui.explore.ExploreScreen
-import com.example.unimarket.ui.explore.PublishProductScreen
-import com.example.unimarket.ui.findOffer.FindOfferScreen
-import com.example.unimarket.ui.navigation.BottomNavBar
-import com.example.unimarket.ui.navigation.BottomNavItem
-import com.example.unimarket.ui.orders.OrdersScreen
-import com.example.unimarket.ui.chat.ChatScreen
+import com.example.unimarket.ui.models.BottomNavItem
+
 //import com.example.unimarket.ui.profile.ProfileScreen
 
 @Composable
@@ -48,19 +43,16 @@ fun MainScreen() {
             startDestination = "explore",
             modifier = Modifier.padding(innerPadding)
         ) {
-            //composable("FindAndOffer") { FindAndOfferScreen() }
-                composable("find_offer") {
-                    FindOfferScreen(onNavigateToProductDetail = { productId ->
-                        }
-                    )
+            composable("find_offer") {
+                FindOfferScreen(onNavigateToProductDetail = { productId ->
                 }
-            //composable("Orders") { OrdersScreen() }
-            composable("orders") {
-                OrdersScreen(onNavigateToOrder = { orderId ->
-                  }
                 )
             }
-            //composable("Chat") { ChatScreen() }
+            composable("orders") {
+                OrdersScreen(onNavigateToOrder = { orderId ->
+                }
+                )
+            }
             composable("chat") {
                 // Aquí pasamos navController y el callback onNavigateToChat
                 ChatScreen(
@@ -72,9 +64,21 @@ fun MainScreen() {
                 )
             }
             composable("explore") { ExploreScreen(navController) }
-            //composable("chat") { ChatScreen() }
-            //composable("profile") { ProfileScreen() }
+            composable("profile") { ProfileScreen(
+                navController = navController,
+                bottomItems = bottomNavItems
+            ) }
             composable("publish") { PublishProductScreen(navController) }
+            composable("wishlist") {
+                WishlistScreen(
+                    onBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable("edit_profile") {
+                EditProfileScreen(navController = navController)
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.onboarding
+package com.example.unimarket.ui.views
 
 import android.os.Bundle
 import androidx.compose.foundation.Image
@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -97,7 +98,7 @@ fun OnboardingScreen(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
-            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             // Display onboarding image
