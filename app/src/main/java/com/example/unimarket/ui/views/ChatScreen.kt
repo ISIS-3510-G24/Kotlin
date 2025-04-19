@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.views
+package com.example.unimarket.ui.chat
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -27,9 +27,9 @@ fun ChatScreen(
     onNavigateToChat: (String) -> Unit
 ) {
     val chats = listOf(
-        ChatOverview("chat1", "Vendedor Yamaha", "¡Hola! ¿Todavía disponible?"),
-        ChatOverview("chat2", "Comprador Scalpel", "Gracias por la venta."),
-        ChatOverview("chat3", "Soporte Unimarket", "¿En qué podemos ayudarte?")
+        ChatOverview("chat1", "Yamaha Piano seller", "Hello! Are you available?"),
+        ChatOverview("chat2", "Leather scalpel buyer", "Thank you for the selling."),
+        ChatOverview("chat3", "Unimarket Support", "How can we help you?")
     )
 
     Scaffold(
@@ -38,12 +38,12 @@ fun ChatScreen(
                 title = { Text("Chats") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
                     IconButton(onClick = { /* TODO: Nueva conversación */ }) {
-                        Icon(Icons.Filled.ChatBubble, contentDescription = "Nuevo chat")
+                        Icon(Icons.Filled.ChatBubble, contentDescription = "New chat")
                     }
                 }
             )
