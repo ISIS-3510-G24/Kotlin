@@ -76,6 +76,9 @@ fun MainScreen() {
                     }
                 )
             }
+            composable("edit_profile") {
+                EditProfileScreen(navController = navController)
+            }
         }
     }
 }
