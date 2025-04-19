@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.explore
+package com.example.unimarket.ui.views
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -39,10 +39,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
-import com.example.unimarket.ui.sensor.ShakeDetector
+import com.example.unimarket.R
+import com.example.unimarket.ui.models.Product
+import com.example.unimarket.ui.viewmodels.ExploreViewModel
+import com.example.unimarket.ui.viewmodels.ShakeDetector
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import com.example.unimarket.R
 
 @Composable
 fun ExploreScreen(

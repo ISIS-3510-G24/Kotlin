@@ -1,9 +1,11 @@
-package com.example.unimarket.ui.explore
+package com.example.unimarket.ui.viewmodels
 
 import android.net.Uri
 import android.os.Bundle
 import androidx.lifecycle.ViewModel
 import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
+import com.example.unimarket.ui.models.Product
+import com.example.unimarket.ui.models.User
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.auth.FirebaseAuth

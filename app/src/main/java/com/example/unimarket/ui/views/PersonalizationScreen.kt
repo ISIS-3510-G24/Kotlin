@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.onboarding
+package com.example.unimarket.ui.views
 
 import android.os.Bundle
 import androidx.compose.foundation.layout.Arrangement

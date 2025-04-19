@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.sensor
+package com.example.unimarket.ui.viewmodels
 
 import android.content.Context
 import android.hardware.Sensor
