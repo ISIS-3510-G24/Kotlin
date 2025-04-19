@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.navigation
+package com.example.unimarket.ui.models
 
 import androidx.compose.ui.graphics.vector.ImageVector
 

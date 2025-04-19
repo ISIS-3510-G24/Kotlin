@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.register
+package com.example.unimarket.ui.viewmodels
 
 import android.net.Uri
 import android.os.Bundle
@@ -32,6 +32,12 @@ class RegisterViewModel : ViewModel() {
     val preferences = mutableStateOf<List<String>>(emptyList())
     val acceptTerms = mutableStateOf(false)
 
+    // Error states per field
+    val displayNameError = mutableStateOf<String?>(null)
+    val emailError = mutableStateOf<String?>(null)
+    val passwordError = mutableStateOf<String?>(null)
+    val confirmPasswordError = mutableStateOf<String?>(null)
+
     // Profile picture URL state; default profile picture if none is uploaded
     val profilePictureUrl =
         mutableStateOf("https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Default_pfp.svg/2048px-Default_pfp.svg.png")
@@ -39,6 +45,53 @@ class RegisterViewModel : ViewModel() {
     private val analytics: FirebaseAnalytics = Firebase.analytics
     private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
     private val storage: FirebaseStorage by lazy { FirebaseStorage.getInstance() }
+
+    fun validateDisplayName(name: String) {
+        displayNameError.value = when {
+            name.isBlank() -> "Name cannot be empty"
+            name.length < 3 -> "Name must be at least 3 characters"
+            name.length > 30 -> "Name must be less than 30 characters"
+            else -> null
+        }
+    }
+
+    fun validateEmail(email: String) {
+        emailError.value = when {
+            email.isBlank() -> "Email cannot be empty"
+            !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "Invalid email format"
+            else -> null
+        }
+    }
+
+    fun validatePassword(password: String) {
+        passwordError.value = when {
+            password.isBlank() -> "Password cannot be empty"
+            password.length < 6 -> "Password must be at least 6 characters"
+            else -> null
+        }
+        validateConfirmPassword(confirmPassword.value, password)
+    }
+
+    fun validateConfirmPassword(confirmPassword: String, password: String = this.password.value) {
+        confirmPasswordError.value = when {
+            confirmPassword.isBlank() -> "Confirm Password cannot be empty"
+            confirmPassword != password -> "Passwords do not match"
+            else -> null
+        }
+    }
+
+    fun allInputsValid(): Boolean {
+        validateDisplayName(displayName.value)
+        validateEmail(email.value)
+        validatePassword(password.value)
+        validateConfirmPassword(confirmPassword.value, password.value)
+        return listOf(
+            displayNameError.value,
+            emailError.value,
+            passwordError.value,
+            confirmPasswordError.value
+        ).all { it == null }
+    }
 
     // Uploads profile picture to Firebase Storage and updates profilePictureUrl
     fun uploadProfilePicture(imageUri: Uri, onComplete: (Boolean) -> Unit) {
@@ -74,23 +127,11 @@ class RegisterViewModel : ViewModel() {
     }
 
     fun registerUser() {
-        // Validate that all required fields are filled
-        if (displayName.value.isEmpty() ||
-            email.value.isEmpty() ||
-            password.value.isEmpty() ||
-            confirmPassword.value.isEmpty() ||
-            major.value.isEmpty() ||
-            preferences.value.isEmpty()
-        ) {
-            errorMessage.value = "Please fill out all required fields"
+        if (!allInputsValid()) {
+            errorMessage.value = "Please fix the errors in the form"
             return
         }
 
-        // Validate that passwords match
-        if (password.value != confirmPassword.value) {
-            errorMessage.value = "Passwords do not match"
-            return
-        }
         // Validate that Terms and Conditions are accepted
         if (!acceptTerms.value) {
             errorMessage.value = "You must accept the Terms and Conditions"

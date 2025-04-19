@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.explore
+package com.example.unimarket.ui.models
 
 import com.google.firebase.Timestamp
 

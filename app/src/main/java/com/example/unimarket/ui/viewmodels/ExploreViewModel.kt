@@ -1,13 +1,17 @@
-package com.example.unimarket.ui.explore
+package com.example.unimarket.ui.viewmodels
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.lifecycle.ViewModel
 import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
+import com.example.unimarket.ui.models.Product
+import com.example.unimarket.ui.models.User
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -15,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 class ExploreViewModel : ViewModel() {
     // Firebase Analytics instance
     private val analytics: FirebaseAnalytics = Firebase.analytics
+    private val storage = FirebaseStorage.getInstance()
 
     private val _products = MutableStateFlow<List<Product>>(emptyList())
     val products: StateFlow<List<Product>> = _products
@@ -86,6 +91,29 @@ class ExploreViewModel : ViewModel() {
     fun refreshProducts() {
         analytics.logEvent("refresh_products", Bundle()) // Log refresh event
         loadProductsFromFirestore()
+    }
+
+    fun uploadProductImage(
+        imageUri: Uri,
+        onResult: (downloadUrl: String?) -> Unit
+    ) {
+        val userId = getCurrentUserId()
+        val path = "product_images/$userId/${System.currentTimeMillis()}.jpg"
+        val ref = storage.reference.child(path)
+
+        ref.putFile(imageUri)
+            .addOnSuccessListener {
+                ref.downloadUrl
+                    .addOnSuccessListener{ uri ->
+                        onResult(uri.toString())
+                    }
+                    .addOnFailureListener {  _ ->
+                        onResult(null)
+                    }
+            }
+            .addOnFailureListener { _ ->
+                onResult(null)
+            }
     }
 
     fun publishProduct(
