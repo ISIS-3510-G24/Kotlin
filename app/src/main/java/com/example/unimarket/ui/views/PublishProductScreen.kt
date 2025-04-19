@@ -297,11 +297,7 @@ fun PublishProductScreen(
             // --------------------------------------------------------------------------------------
             Button(
                 onClick = {
-                    // Validate input fields and publish the product
                     val price = priceText.toDoubleOrNull()
-
-                    // TODO: Upload image to Firebase Storage and obtain a download URL.
-                    // For now, we assume the imageUri is not null and use its URI string.
                     if (
                         selectedMajor != null &&
                         selectedClass != null &&
@@ -310,44 +306,54 @@ fun PublishProductScreen(
                         price != null &&
                         imageUri.value != null
                     ) {
-                        val labels = labelsText
-                            .split(",")
-                            .map { it.trim() }
-                            .filter { it.isNotEmpty() }
-
-                        val finalImageUrl = imageUri.value.toString()
-
-                        val newProduct = Product(
-                            classId = selectedClass!!.id,
-                            createdAt = Timestamp.now(),
-                            description = description,
-                            imageUrls = listOf(finalImageUrl),
-                            labels = labels,
-                            majorID = selectedMajor!!.id, // Use the major's id here
-                            price = price,
-                            sellerID = exploreViewModel.getCurrentUserId(),
-                            status = "Available",
-                            title = title,
-                            updatedAt = Timestamp.now()
-                        )
-
-                        exploreViewModel.publishProduct(
-                            newProduct,
-                            onSuccess = {
-                                navController.navigate("explore") {
-                                    popUpTo("explore") { inclusive = true }
-                                }
-                            },
-                            onFailure = { errorMsg ->
-                                FirebaseCrashlytics.getInstance().log(errorMsg)
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("Publishing product...")
+                        }
+                        // Upload the image
+                        exploreViewModel.uploadProductImage(imageUri.value!!) { downloadUrl ->
+                            if (downloadUrl != null) {
+                                val newProduct = Product(
+                                    classId = selectedClass!!.id,
+                                    createdAt = Timestamp.now(),
+                                    description = description,
+                                    imageUrls = listOf(downloadUrl),
+                                    labels = labelsText
+                                        .split(",")
+                                        .map { it.trim() }
+                                        .filter { it.isNotEmpty() },
+                                    majorID = selectedMajor!!.id,
+                                    price = price,
+                                    sellerID = exploreViewModel.getCurrentUserId(),
+                                    status = "Available",
+                                    title = title,
+                                    updatedAt = Timestamp.now()
+                                )
+                                // Save the product to Firestore
+                                exploreViewModel.publishProduct(
+                                    newProduct,
+                                    onSuccess = {
+                                        navController.navigate("explore") {
+                                            popUpTo("explore") {
+                                                inclusive = true
+                                            }
+                                        }
+                                    },
+                                    onFailure = { errorMsg ->
+                                        FirebaseCrashlytics.getInstance().log(errorMsg)
+                                        coroutineScope.launch {
+                                            snackbarHostState.showSnackbar("Failed to publish product.")
+                                        }
+                                    }
+                                )
+                            } else {
                                 coroutineScope.launch {
-                                    snackbarHostState.showSnackbar(errorMsg)
+                                    snackbarHostState.showSnackbar("Failed to upload image.")
                                 }
                             }
-                        )
+                        }
                     } else {
                         coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Please fill in all required fields.")
+                            snackbarHostState.showSnackbar("Please fill all fields correctly.")
                         }
                     }
                 },

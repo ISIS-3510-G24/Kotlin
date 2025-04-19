@@ -22,7 +22,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -35,13 +34,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
-import com.example.unimarket.ui.viewModels.ExploreViewModel
+import com.example.unimarket.R
 import com.example.unimarket.ui.models.Product
+import com.example.unimarket.ui.viewModels.ExploreViewModel
 import com.example.unimarket.ui.viewModels.ShakeDetector
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -65,7 +65,7 @@ fun ExploreScreen(
             delay(10000) // Wait 10 seconds
             snackbarHostState.showSnackbar(
                 message = "Tip: Shake your phone to refresh products.",
-                duration = SnackbarDuration.Short
+                duration = androidx.compose.material3.SnackbarDuration.Short
             )
             tipShown.value = true
         }
@@ -77,7 +77,7 @@ fun ExploreScreen(
         coroutineScope.launch {
             snackbarHostState.showSnackbar(
                 message = "Products refreshed!",
-                duration = SnackbarDuration.Short
+                duration = androidx.compose.material3.SnackbarDuration.Short
             )
         }
     }
@@ -183,17 +183,21 @@ fun ProductCard(product: Product) {
             .padding(bottom = 8.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            val painter = rememberAsyncImagePainter(
-                model = product.imageUrls.firstOrNull(),
-                contentScale = ContentScale.Crop
-            )
+            val painter = product.imageUrls.firstOrNull()
+                ?.let { url ->
+                    rememberAsyncImagePainter(
+                        model = url,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    )
+                }
+                ?: painterResource(id = R.drawable.default_product)
             Image(
                 painter = painter,
                 contentDescription = product.title,
                 modifier = Modifier
                     .fillMaxSize() // Fill the size of the Card
                     .height(180.dp),
-                contentScale = ContentScale.Crop
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = product.title, style = MaterialTheme.typography.titleMedium)
