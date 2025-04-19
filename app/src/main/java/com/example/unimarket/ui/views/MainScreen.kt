@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -18,7 +19,9 @@ import com.example.unimarket.ui.models.BottomNavItem
 //import com.example.unimarket.ui.profile.ProfileScreen
 
 @Composable
-fun MainScreen() {
+fun MainScreen(
+    rootNavController: NavController
+) {
     // Use a NavController for bottom navigation
     val navController = rememberNavController()
 
@@ -66,6 +69,7 @@ fun MainScreen() {
             composable("explore") { ExploreScreen(navController) }
             composable("profile") { ProfileScreen(
                 navController = navController,
+                rootNavController = rootNavController,
                 bottomItems = bottomNavItems
             ) }
             composable("publish") { PublishProductScreen(navController) }
