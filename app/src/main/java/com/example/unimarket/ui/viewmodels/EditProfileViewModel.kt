@@ -1,4 +1,3 @@
-// EditProfileViewModel.kt
 package com.example.unimarket.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
@@ -9,9 +8,6 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-
-// Holds all the data needed by the Edit Profile screen
-
 
 class EditProfileViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()

@@ -40,7 +40,7 @@ import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
 import com.example.unimarket.ui.models.ClassItem
 import com.example.unimarket.ui.models.Major
 import com.example.unimarket.ui.models.Product
-import com.example.unimarket.ui.viewModels.ExploreViewModel
+import com.example.unimarket.ui.viewmodels.ExploreViewModel
 import com.google.firebase.Timestamp
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.launch

@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.viewModels
+package com.example.unimarket.ui.viewmodels
 
 import android.net.Uri
 import android.os.Bundle

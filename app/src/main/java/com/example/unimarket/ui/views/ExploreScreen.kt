@@ -41,8 +41,8 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.R
 import com.example.unimarket.ui.models.Product
-import com.example.unimarket.ui.viewModels.ExploreViewModel
-import com.example.unimarket.ui.viewModels.ShakeDetector
+import com.example.unimarket.ui.viewmodels.ExploreViewModel
+import com.example.unimarket.ui.viewmodels.ShakeDetector
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
