@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.orders
+package com.example.unimarket.ui.views
 
 import android.util.Log
 import androidx.compose.foundation.Image

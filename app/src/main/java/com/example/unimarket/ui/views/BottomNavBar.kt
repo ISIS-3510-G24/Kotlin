@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.navigation
+package com.example.unimarket.ui.views
 
 import android.os.Bundle
 import androidx.compose.material3.Icon
@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.unimarket.ui.models.BottomNavItem
 import com.google.firebase.analytics.FirebaseAnalytics
 
 @Composable

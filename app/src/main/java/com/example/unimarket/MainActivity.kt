@@ -14,12 +14,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.unimarket.ui.data.PreferencesManager
-import com.example.unimarket.ui.login.LoginScreen
-import com.example.unimarket.ui.main.MainScreen
-import com.example.unimarket.ui.onboarding.OnboardingScreen
-import com.example.unimarket.ui.onboarding.PersonalizationScreen
-import com.example.unimarket.ui.register.RegisterScreen
 import com.example.unimarket.ui.theme.UniMarketTheme
+import com.example.unimarket.ui.views.LoginScreen
+import com.example.unimarket.ui.views.MainScreen
+import com.example.unimarket.ui.views.OnboardingScreen
+import com.example.unimarket.ui.views.PersonalizationScreen
+import com.example.unimarket.ui.views.RegisterScreen
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -107,16 +107,12 @@ fun AppNavigation() {
         composable("register") {
             RegisterScreen(
                 onRegisterSuccess = {
-                    // You can choose to either:
-                    // 1) Go back to the login screen:
                     navController.popBackStack()
-                    // 2) Go to the home screen:
-                    // navController.navigate("home") { popUpTo("login") { inclusive = true } }
                 }
             )
         }
         composable("main") {
-            MainScreen()
+            MainScreen(rootNavController = navController)
         }
     }
 }
