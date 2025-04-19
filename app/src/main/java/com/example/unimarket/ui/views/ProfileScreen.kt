@@ -49,6 +49,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.ui.models.BottomNavItem
 import com.example.unimarket.ui.viewmodels.ProfileViewModel
 import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.perf.ktx.performance
 
@@ -56,6 +57,7 @@ import com.google.firebase.perf.ktx.performance
 @Composable
 fun ProfileScreen(
     navController: NavController,
+    rootNavController: NavController,
     bottomItems: List<BottomNavItem>,
     viewModel: ProfileViewModel = viewModel()
 ) {
@@ -162,7 +164,15 @@ fun ProfileScreen(
                                             analytics.logEvent(
                                                 "profile_option_clicked",
                                                 Bundle().apply { putString("option", label) })
-                                            navController.navigate(route)
+
+                                            if (route == "logout") {
+                                                FirebaseAuth.getInstance().signOut()
+                                                rootNavController.navigate("login") {
+                                                    popUpTo(rootNavController.graph.startDestinationId) { inclusive = true }
+                                                }
+                                            } else {
+                                                navController.navigate(route)
+                                            }
                                         }
                                 )
                                 Divider()
