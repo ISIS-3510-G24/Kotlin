@@ -64,12 +64,18 @@ fun MainScreen() {
                 )
             }
             composable("explore") { ExploreScreen(navController) }
-            //composable("chat") { ChatScreen() }
             composable("profile") { ProfileScreen(
                 navController = navController,
                 bottomItems = bottomNavItems
             ) }
             composable("publish") { PublishProductScreen(navController) }
+            composable("wishlist") {
+                WishlistScreen(
+                    onBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
         }
     }
 }
