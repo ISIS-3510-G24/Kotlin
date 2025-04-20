@@ -81,6 +81,10 @@ fun MainScreen(
             composable("edit_profile") {
                 EditProfileScreen(navController = navController)
             }
+
+            composable("validate_seller") {
+                ValidateDeliveryScreen(navController = navController)
+            }
         }
     }
 }

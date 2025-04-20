@@ -16,7 +16,7 @@ google-services = "4.4.2"
 firebase-auth = "23.2.0"
 datastore = "1.1.4"
 firestore = "25.1.3"
-coil = "2.3.0"
+coil = "2.4.0"
 firebase-analytics-ktx = "22.4.0"
 materialIconsExtended = "1.7.8"
 navigationCompose = "2.8.9"
@@ -61,6 +61,8 @@ firebase-analytics-ktx = { module = "com.google.firebase:firebase-analytics-ktx"
 storage = { module = "com.google.firebase:firebase-storage", version.ref = "storage" }
 firebase-performance = { module = "com.google.firebase:firebase-perf", version.ref = "firebasePerformance" }
 firebase-vertexai = { group = "com.google.firebase", name = "firebase-vertexai", version.ref = "firebaseVertexai" }
+zxing-core = { module = "com.google.zxing:core", version = "3.4.1" }
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
