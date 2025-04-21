@@ -1,11 +1,17 @@
 package com.example.unimarket.ui.viewmodels
 
 import android.net.Uri
+import androidx.core.os.bundleOf
 import androidx.lifecycle.ViewModel
 import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
 import com.example.unimarket.ui.models.ProfileUiState
 import com.example.unimarket.ui.models.User
+import com.google.firebase.Firebase
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.analytics
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.perf.FirebasePerformance
+import com.google.firebase.perf.metrics.Trace
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,12 +22,29 @@ class ProfileViewModel : ViewModel() {
     private val usersRef = FirebaseFirestoreSingleton.getCollection("User")
     private val storageRef = FirebaseStorage.getInstance().reference
 
+    private val performance = FirebasePerformance.getInstance()
+    private val analytics: FirebaseAnalytics = Firebase.analytics
+    private var trace: Trace? = null
+
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     init { loadUser() }
 
+    fun onScreenLoadStart() {
+        trace = performance.newTrace("load_ProfileScreen").apply { start() }
+        analytics.logEvent("screen_load_start", bundleOf("screen" to "Profile"))
+    }
+    fun onScreenLoadEnd(success: Boolean = true) {
+        trace?.stop()
+        analytics.logEvent(
+            "screen_load_end",
+            bundleOf("screen" to "Profile", "success" to success)
+        )
+    }
+
     private fun loadUser() {
+        onScreenLoadStart()
         val uid = auth.currentUser?.uid ?: return
         _uiState.value = _uiState.value.copy(isLoading = true)
         usersRef.document(uid).get()
@@ -32,6 +55,7 @@ class ProfileViewModel : ViewModel() {
                     user      = u,
                     errorMessage = if (u == null) "User not found" else null
                 )
+                onScreenLoadEnd(true)
             }
             .addOnFailureListener { ex ->
                 _uiState.value = ProfileUiState(
@@ -39,6 +63,7 @@ class ProfileViewModel : ViewModel() {
                     user = null,
                     errorMessage = ex.localizedMessage
                 )
+                onScreenLoadEnd(false)
             }
     }
 
