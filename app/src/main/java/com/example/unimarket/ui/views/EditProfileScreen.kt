@@ -48,6 +48,12 @@ fun EditProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
+    LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading) {
+            viewModel.onScreenLoadEnd()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
