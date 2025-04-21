@@ -1,27 +1,26 @@
 package com.example.unimarket.ui.views
 
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -65,8 +64,25 @@ fun ProfileScreen(
     val context = LocalContext.current
     val analytics = FirebaseAnalytics.getInstance(context)
 
+    // Launcher to pick image from gallery
+    val imagePicker = rememberLauncherForActivityResult (
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            viewModel.uploadProfilePicture(
+                uri = it,
+                onSuccess = {
+                    Toast.makeText(context, "Profile picture updated", Toast.LENGTH_SHORT).show()
+                },
+                onError = { err ->
+                    Toast.makeText(context, "Error: $err", Toast.LENGTH_LONG).show()
+                }
+            )
+        }
+    }
+
     Scaffold(
-        topBar = { CenterAlignedTopAppBar(title = { Text("Settings") }) },
+        topBar = { CenterAlignedTopAppBar(title = { Text("Settings") }) }
     ) { innerPadding ->
         Box(
             Modifier
@@ -86,28 +102,37 @@ fun ProfileScreen(
 
                 uiState.user != null -> {
                     val u = uiState.user!!
-                    Column(Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)) {
-                        // avatar y edit
-                        Box(Modifier
-                            .size(100.dp)
-                            .align(Alignment.CenterHorizontally)) {
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
+                        // Avatar + tap-to-select new picture
+                        Box(
+                            Modifier
+                                .size(100.dp)
+                                .align(Alignment.CenterHorizontally)
+                        ) {
                             Image(
                                 painter = rememberAsyncImagePainter(u.profilePicture),
                                 contentDescription = "Avatar",
                                 modifier = Modifier
                                     .size(100.dp)
-                                    .clip(CircleShape),
+                                    .clip(CircleShape)
+                                    .clickable {
+                                        // Launch gallery picker
+                                        imagePicker.launch("image/*")
+                                    },
                                 contentScale = ContentScale.Crop
                             )
+                            // Optional: overlay edit icon
                             IconButton(
-                                onClick = { navController.navigate("edit_profile") },
+                                onClick = { imagePicker.launch("image/*") },
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
                                     .size(24.dp)
                             ) {
-                                Icon(Icons.Default.Edit, contentDescription = null)
+                                Icon(Icons.Default.Edit, contentDescription = "Edit photo")
                             }
                         }
 
@@ -124,23 +149,9 @@ fun ProfileScreen(
                             modifier = Modifier.align(Alignment.CenterHorizontally)
                         )
 
-                        Spacer(Modifier.height(4.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Default.Star,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text("${u.ratingAverage} (${u.reviewsCount} reviews)")
-                        }
-
                         Spacer(Modifier.height(16.dp))
 
+                        // ... el resto de tu menú y botones ...
                         val menu = listOf(
                             "Wishlist" to "wishlist",
                             "Edit Profile" to "edit_profile",
@@ -163,12 +174,15 @@ fun ProfileScreen(
                                         .clickable {
                                             analytics.logEvent(
                                                 "profile_option_clicked",
-                                                Bundle().apply { putString("option", label) })
-
+                                                Bundle().apply {
+                                                    putString("option", label)
+                                                })
                                             if (route == "logout") {
                                                 FirebaseAuth.getInstance().signOut()
                                                 rootNavController.navigate("login") {
-                                                    popUpTo(rootNavController.graph.startDestinationId) { inclusive = true }
+                                                    popUpTo(rootNavController.graph.startDestinationId) {
+                                                        inclusive = true
+                                                    }
                                                 }
                                             } else {
                                                 navController.navigate(route)
