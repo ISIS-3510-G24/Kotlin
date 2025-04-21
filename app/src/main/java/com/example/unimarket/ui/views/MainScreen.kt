@@ -64,7 +64,7 @@ fun MainScreen(
                     }
                 )
             }
-            composable("explore") { ExploreScreen(navController) }
+            composable("explore") { ExploreScreen(rootNavController) }
             composable("profile") { ProfileScreen(
                 navController = navController,
                 rootNavController = rootNavController,
