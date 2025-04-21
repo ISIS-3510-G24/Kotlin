@@ -1,25 +1,22 @@
 package com.example.unimarket.ui.views
 
 import android.util.Log
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,163 +30,130 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import coil.compose.rememberAsyncImagePainter
-import com.google.firebase.auth.FirebaseAuth
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
+import kotlinx.coroutines.tasks.await
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ValidateDeliveryScreen(navController: NavController) {
-    val context = LocalContext.current
+fun ValidateDeliveryScreen(
+    navController: NavController
+) {
     val firestore = FirebaseFirestore.getInstance()
-    val userId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
 
-    val productToSell = listOf("1234567")
-    var product by remember { mutableStateOf<Map<String, Any>?>(null) }
-    var showQr by remember { mutableStateOf(false) }
-    var hashConfirm by remember { mutableStateOf("") }
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val orderId = backStackEntry?.arguments?.getString("orderId")
 
-    LaunchedEffect(productToSell) {
-        val pid = productToSell.firstOrNull() ?: return@LaunchedEffect
+    var hashConfirm by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
 
-        Log.d("ValidateDeliveryScreen", "Fetching product with ID: $pid")
+    LaunchedEffect(orderId) {
+        if (orderId == null) {
+            errorMsg = "No order ID provided"
+            loading = false
+            return@LaunchedEffect
+        }
 
-        firestore.collection("Product")
-            .document(pid)
-            .get()
-            .addOnSuccessListener { doc ->
-                if (doc.exists()) {
-                    Log.d("ValidateDeliveryScreen", "Product found: ${doc.id}")
-                    val seller = doc.getString("sellerID").orEmpty()
+        loading = true
+        errorMsg = null
+        try {
+            val doc = firestore.collection("orders")
+                .document(orderId)
+                .get()
+                .await()
 
-                    if (seller == userId) {
-                        product = doc.data
-                        hashConfirm = doc.id
-                    } else {
-                        Toast.makeText(context, "You are not the seller of this product", Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    Log.d("ValidateDeliveryScreen", "Product not found for ID: $pid")
-                    Toast.makeText(context, "Product not found", Toast.LENGTH_SHORT).show()
+            if (doc.exists()) {
+                hashConfirm = doc.getString("hashConfirm")
+                if (hashConfirm.isNullOrBlank()) {
+                    errorMsg = "The hashConfirm field is empty"
                 }
+            } else {
+                errorMsg = "Order not found"
             }
-            .addOnFailureListener { exception ->
-                Log.e("ValidateDeliveryScreen", "Error fetching product: ${exception.message}")
-                Toast.makeText(context, "Error: ${exception.message}", Toast.LENGTH_SHORT).show()
-            }
+        } catch (e: Exception) {
+            Log.e("ValidateDelivery", "Error fetching order", e)
+            errorMsg = e.localizedMessage ?: "Unknown error"
+        } finally {
+            loading = false
+        }
     }
 
-    Surface(modifier = Modifier.fillMaxSize()) {
-        product?.let { p ->
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                val imageUrl = (p["imageUrls"] as? List<*>)?.firstOrNull() as? String
-                val labels = (p["labels"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
-
-                imageUrl?.let {
-                    Image(
-                        painter = rememberAsyncImagePainter(it),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .height(200.dp)
-                            .fillMaxWidth()
-                            .background(Color.LightGray, RoundedCornerShape(8.dp))
-                    )
+    Scaffold { padding ->
+        Box(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                loading -> {
+                    CircularProgressIndicator()
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    p["title"] as? String ?: "No title",
-                    style = MaterialTheme.typography.titleLarge
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    labels.forEach {
-                        Text(
-                            text = it,
-                            modifier = Modifier
-                                .background(Color.Blue.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                                .padding(horizontal = 10.dp, vertical = 4.dp),
-                            color = Color.Blue
-                        )
+                errorMsg != null -> {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(errorMsg!!, color = Color.Red, style = MaterialTheme.typography.bodyMedium)
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = { navController.popBackStack() }) {
+                            Text("Back")
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(onClick = { showQr = true }) {
-                    Text("Show delivery QR")
-                }
-            }
-
-            if (showQr && hashConfirm.isNotEmpty()) {
-                AlertDialog(
-                    onDismissRequest = { showQr = false },
-                    title = { Text("Scan this QR") },
-                    text = {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            val qrBitmap = generateQrCodeBitmap(hashConfirm)
-                            qrBitmap?.let {
-                                Image(
-                                    bitmap = it,
-                                    contentDescription = "QR Code",
-                                    modifier = Modifier.size(200.dp)
-                                )
-                            } ?: run {
-                                Text("Failed to generate QR Code")
-                            }
-                        }
-                    },
-                    confirmButton = {
-                        Button(onClick = { showQr = false }) {
+                hashConfirm != null -> {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            "Scan this code to confirm delivery",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        Spacer(Modifier.height(24.dp))
+                        generateQrCodeBitmap(hashConfirm!!)?.let { bmp ->
+                            Image(
+                                bitmap = bmp,
+                                contentDescription = "QR delivery",
+                                modifier = Modifier
+                                    .size(250.dp)
+                                    .background(Color.LightGray, RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        } ?: Text("Error generating QR", color = Color.Red)
+                        Spacer(Modifier.height(24.dp))
+                        Button(onClick = { navController.popBackStack() }) {
                             Text("Close")
                         }
                     }
-                )
-            }
-        } ?: run {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("There are no pending orders")
+                }
             }
         }
     }
 }
 
 fun generateQrCodeBitmap(data: String): ImageBitmap? {
-    return if (data.isNotEmpty()) {
-        try {
-            val writer = QRCodeWriter()
-            val bitMatrix = writer.encode(data, BarcodeFormat.QR_CODE, 512, 512)
-            val width = bitMatrix.width
-            val height = bitMatrix.height
-            val bmp = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.RGB_565)
-            for (x in 0 until width) {
-                for (y in 0 until height) {
-                    bmp.setPixel(x, y, if (bitMatrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
-                }
+    return try {
+        val writer = QRCodeWriter()
+        val matrix = writer.encode(data, BarcodeFormat.QR_CODE, 512, 512)
+        val width = matrix.width
+        val height = matrix.height
+        val bmp = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.RGB_565)
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+                bmp.setPixel(x, y, if (matrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
             }
-            bmp.asImageBitmap()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
         }
-    } else {
+        bmp.asImageBitmap()
+    } catch (e: Exception) {
+        Log.e("ValidateDelivery", "QR generation failed: ${e.message}")
         null
     }
 }
