@@ -41,7 +41,6 @@ class ExploreViewModel : ViewModel() {
     val userPreferences: StateFlow<List<String>> = _userPreferences
 
     init {
-        loadProductsFromFirestore()
         loadUserPreferences()
     }
 
