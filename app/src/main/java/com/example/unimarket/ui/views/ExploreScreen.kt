@@ -71,6 +71,11 @@ fun ExploreScreen(
 
     // Tip after 10s
     var tipShown by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        exploreViewModel.loadProductsFromFirestore()
+    }
+
     LaunchedEffect(Unit) {
         delay(10_000)
         if (!tipShown) {
