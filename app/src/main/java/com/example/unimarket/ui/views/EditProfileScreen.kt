@@ -135,15 +135,6 @@ fun EditProfileScreen(
                     }
                 }
 
-                // Profile picture URL
-                OutlinedTextField(
-                    value = uiState.profilePicUrl,
-                    onValueChange = viewModel::onProfilePicUrlChange,
-                    label = { Text("Profile Picture URL") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
                 // Save button
                 Button(
                     onClick = {
