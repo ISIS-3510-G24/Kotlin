@@ -49,6 +49,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.R
 import com.example.unimarket.ui.models.Product
 import com.example.unimarket.ui.viewmodels.ExploreViewModel
+import com.example.unimarket.ui.viewmodels.ShakeDetector
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -73,6 +74,13 @@ fun ExploreScreen(
         if (!tipShown) {
             snackbarHostState.showSnackbar("Tip: Shake your phone to refresh products.")
             tipShown = true
+        }
+    }
+
+    ShakeDetector {
+        exploreViewModel.refreshProducts()
+        scope.launch {
+            snackbarHostState.showSnackbar("Products refreshed!")
         }
     }
 
