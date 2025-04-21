@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.ktx.BuildConfig
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.perf.FirebasePerformance
 import com.google.firebase.perf.metrics.Trace
@@ -22,10 +23,23 @@ class LoginViewModel : ViewModel() {
 
     fun loginUser(email: String, password: String) {
         val loginTrace: Trace = FirebasePerformance.getInstance().newTrace("login_trace")
+
+        loginTrace.putAttribute("env", BuildConfig.BUILD_TYPE)
+        loginTrace.putAttribute("user_email", email)
+
         loginTrace.start()
 
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
+                // Log the outcome of the login attempt
+                val outcome = if (task.isSuccessful) "success" else "failure"
+                loginTrace.putAttribute("outcome", outcome)
+
+                if (!task.isSuccessful) {
+                    loginTrace.incrementMetric("login_failures",1)
+                }
+
+
                 // Stop the trace when the task is complete
                 loginTrace.stop()
                 if (task.isSuccessful) {

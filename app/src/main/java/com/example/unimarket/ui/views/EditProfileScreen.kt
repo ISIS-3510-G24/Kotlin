@@ -48,6 +48,12 @@ fun EditProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
+    LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading) {
+            viewModel.onScreenLoadEnd()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -134,15 +140,6 @@ fun EditProfileScreen(
                         }
                     }
                 }
-
-                // Profile picture URL
-                OutlinedTextField(
-                    value = uiState.profilePicUrl,
-                    onValueChange = viewModel::onProfilePicUrlChange,
-                    label = { Text("Profile Picture URL") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
 
                 // Save button
                 Button(

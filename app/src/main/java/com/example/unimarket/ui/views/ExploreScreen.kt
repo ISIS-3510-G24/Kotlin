@@ -1,20 +1,25 @@
 package com.example.unimarket.ui.views
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,8 +37,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -45,81 +52,71 @@ import com.example.unimarket.ui.viewmodels.ExploreViewModel
 import com.example.unimarket.ui.viewmodels.ShakeDetector
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
+import java.util.Locale
 
 @Composable
 fun ExploreScreen(
     navController: NavController,
+    bottomNavController: NavController,
     exploreViewModel: ExploreViewModel = viewModel()
 ) {
-    val productList by exploreViewModel.products.collectAsState()
-    val errorMessage by exploreViewModel.errorMessage.collectAsState()
+    val allProducts by exploreViewModel.products.collectAsState()
     val isLoading by exploreViewModel.isLoading.collectAsState()
     val userPreferences by exploreViewModel.userPreferences.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
 
-    // Show a tip after 10 seconds
-    val tipShown = remember { mutableStateOf(false) }
+    // State for scrolling
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+
+    // Tip after 10s
+    var tipShown by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
-        if (!tipShown.value) {
-            delay(10000) // Wait 10 seconds
-            snackbarHostState.showSnackbar(
-                message = "Tip: Shake your phone to refresh products.",
-                duration = androidx.compose.material3.SnackbarDuration.Short
-            )
-            tipShown.value = true
+        exploreViewModel.loadProductsFromFirestore()
+    }
+
+    LaunchedEffect(Unit) {
+        delay(10_000)
+        if (!tipShown) {
+            snackbarHostState.showSnackbar("Tip: Shake your phone to refresh products.")
+            tipShown = true
         }
     }
 
-    // ShakeDetector for refreshing products
     ShakeDetector {
         exploreViewModel.refreshProducts()
-        coroutineScope.launch {
-            snackbarHostState.showSnackbar(
-                message = "Products refreshed!",
-                duration = androidx.compose.material3.SnackbarDuration.Short
-            )
+        scope.launch {
+            snackbarHostState.showSnackbar("Products refreshed!")
         }
     }
 
-    val recommendedProducts = productList.filter { product ->
-        product.labels.any { label -> label in userPreferences }
+    val recommended = allProducts.filter { p ->
+        p.labels.any { it in userPreferences }
     }
+    val available = allProducts.filter { it.status == "Available" }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                navController.navigate("publish")
-            }) {
+            FloatingActionButton(onClick = { bottomNavController.navigate("publish") }) {
                 Icon(Icons.Default.Add, contentDescription = "Publish Product")
             }
         }
-    ) { innerPadding ->
+    ) { padding ->
         Box(
-            modifier = Modifier
+            Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(padding)
         ) {
-            // Main container for the screen
             LazyColumn(
-                modifier = Modifier.fillMaxSize()
+                state = listState,
+                contentPadding = PaddingValues(bottom = 80.dp)
             ) {
-                // Show error message if there is one
-                if (errorMessage != null) {
-                    item {
-                        Text(
-                            text = errorMessage ?: "",
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    }
-                }
-
-                // Section: Recommended products
                 item {
                     Text(
-                        text = "Recommended for you",
+                        "Recommended for you",
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(start = 16.dp, top = 16.dp)
                     )
@@ -129,79 +126,122 @@ fun ExploreScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(recommendedProducts) { product ->
-                            ProductCard(product)
+                        items(recommended) { product ->
+                            ProductCard(
+                                product = product,
+                                modifier = Modifier
+                                    .width(200.dp)
+                                    .height(280.dp),
+                                onClick = {
+                                    navController.navigate("productDetail/${product.id}")
+                                }
+                            )
                         }
                     }
                 }
-
-                // Section: All products
                 item {
                     Text(
-                        text = "All Products",
+                        "All Products",
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(start = 16.dp, top = 16.dp)
                     )
                 }
-                item {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                items(available.chunked(2)) { rowItems ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(productList) { product ->
-                            ProductCard(product)
+                        rowItems.forEach { product ->
+                            ProductCard(
+                                product = product,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(280.dp),
+                                onClick = {
+                                    navController.navigate("productDetail/${product.id}")
+                                }
+                            )
                         }
+                        if (rowItems.size == 1) Spacer(modifier = Modifier.weight(1f))
                     }
-                }
-
-                // Extra space at the end
-                item {
-                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
 
-            // Loading indicator
+            // Loader overlay
             if (isLoading) {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
                 }
             }
+
+            if (listState.firstVisibleItemIndex > 0) {
+                FloatingActionButton(
+                    onClick = {
+                        scope.launch { listState.animateScrollToItem(0) }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 16.dp, bottom = 100.dp),
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowUpward,
+                        contentDescription = "Scroll to top"
+                    )
+                }
+            }
         }
     }
 }
 
+
 @Composable
-fun ProductCard(product: Product) {
+fun ProductCard(
+    product: Product,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
+) {
+    val formattedPrice = remember(product.price) {
+        NumberFormat.getCurrencyInstance(Locale("es", "CO")).format(product.price)
+    }
+
     Card(
         elevation = CardDefaults.cardElevation(4.dp),
-        modifier = Modifier
-            // Adjust the width of the Card
-            .width(200.dp)
-            .padding(bottom = 8.dp)
+        modifier = modifier
+            .clickable(onClick = onClick)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             val painter = product.imageUrls.firstOrNull()
                 ?.let { url ->
-                    rememberAsyncImagePainter(
-                        model = url,
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                    )
+                    rememberAsyncImagePainter(model = url)
                 }
                 ?: painterResource(id = R.drawable.default_product)
+
             Image(
                 painter = painter,
                 contentDescription = product.title,
                 modifier = Modifier
-                    .fillMaxSize() // Fill the size of the Card
-                    .height(180.dp),
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    .fillMaxWidth()
+                    .height(140.dp),
+                contentScale = ContentScale.Crop
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = product.title, style = MaterialTheme.typography.titleMedium)
-            Text(text = "$${product.price}", style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = product.title,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 2
+            )
+            Text(
+                text = formattedPrice,
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }
+
