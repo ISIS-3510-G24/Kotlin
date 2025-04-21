@@ -52,6 +52,8 @@ import com.example.unimarket.ui.viewmodels.ExploreViewModel
 import com.example.unimarket.ui.viewmodels.ShakeDetector
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
+import java.util.Locale
 
 @Composable
 fun ExploreScreen(
@@ -199,6 +201,10 @@ fun ProductCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {}
 ) {
+    val formattedPrice = remember(product.price) {
+        NumberFormat.getCurrencyInstance(Locale("es", "CO")).format(product.price)
+    }
+
     Card(
         elevation = CardDefaults.cardElevation(4.dp),
         modifier = modifier
@@ -226,7 +232,7 @@ fun ProductCard(
                 maxLines = 2
             )
             Text(
-                text = "$${product.price}",
+                text = formattedPrice,
                 style = MaterialTheme.typography.bodyMedium
             )
         }

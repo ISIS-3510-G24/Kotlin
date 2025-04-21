@@ -30,6 +30,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -39,6 +40,8 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.ui.models.Product
 import com.example.unimarket.ui.viewmodels.ProductDetailViewModel
 import com.google.accompanist.flowlayout.FlowRow
+import java.text.NumberFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -99,6 +102,11 @@ private fun ProductDetailContent(
             .fillMaxSize()
             .padding(16.dp)
     ) {
+
+        val formattedPrice = remember(product.price) {
+            NumberFormat.getCurrencyInstance(Locale("es", "CO")).format(product.price)
+        }
+
         if (product.imageUrls.isNotEmpty()) {
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -124,7 +132,7 @@ private fun ProductDetailContent(
         Text(text = product.title, style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(text = "Price: $${product.price}", style = MaterialTheme.typography.titleMedium)
+        Text(text = "Price: $formattedPrice", style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(text = "Major ID: ${product.majorID}", style = MaterialTheme.typography.bodyMedium)
