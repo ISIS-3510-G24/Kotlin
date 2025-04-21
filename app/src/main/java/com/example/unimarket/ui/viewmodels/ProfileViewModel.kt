@@ -22,6 +22,9 @@ class ProfileViewModel : ViewModel() {
     private val usersRef = FirebaseFirestoreSingleton.getCollection("User")
     private val storageRef = FirebaseStorage.getInstance().reference
 
+    private val ordersRef = FirebaseFirestoreSingleton.getCollection("orders")
+    private val productsRef = FirebaseFirestoreSingleton.getCollection("Product")
+
     private val performance = FirebasePerformance.getInstance()
     private val analytics: FirebaseAnalytics = Firebase.analytics
     private var trace: Trace? = null
@@ -29,18 +32,66 @@ class ProfileViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
-    init { loadUser() }
+    init {
+        loadUser()
+    }
 
     fun onScreenLoadStart() {
         trace = performance.newTrace("load_ProfileScreen").apply { start() }
         analytics.logEvent("screen_load_start", bundleOf("screen" to "Profile"))
     }
+
     fun onScreenLoadEnd(success: Boolean = true) {
         trace?.stop()
         analytics.logEvent(
             "screen_load_end",
             bundleOf("screen" to "Profile", "success" to success)
         )
+    }
+
+    fun validateOrder(
+        hashConfirm: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        ordersRef
+            .whereEqualTo("hashConfirm", hashConfirm)
+            .get()
+            .addOnSuccessListener { snaps ->
+                if (snaps.isEmpty) {
+                    onError("Order not found")
+                    return@addOnSuccessListener
+                }
+
+                snaps.documents.forEach { doc ->
+                    val productId = doc.getString("productID")
+                    if (productId.isNullOrBlank()) {
+                        onError("Product ID not found in order")
+                        return@forEach
+                    }
+
+                    doc.reference
+                        .update("status", "Purchased")
+                        .addOnSuccessListener {
+                            productsRef.document(productId)
+                                .update("status", "Unavailable")
+                                .addOnSuccessListener {
+                                    onSuccess()
+                                }
+                                .addOnFailureListener { ex ->
+                                    onError(
+                                        ex.localizedMessage ?: "Failed to update product status"
+                                    )
+                                }
+                                .addOnFailureListener { ex ->
+                                    onError(ex.localizedMessage ?: "Failed to update order status")
+                                }
+                        }
+                }
+            }
+            .addOnFailureListener { ex ->
+                onError(ex.localizedMessage ?: "Failed to retrieve order")
+            }
     }
 
     private fun loadUser() {
@@ -52,7 +103,7 @@ class ProfileViewModel : ViewModel() {
                 val u = snap.toObject(User::class.java)
                 _uiState.value = ProfileUiState(
                     isLoading = false,
-                    user      = u,
+                    user = u,
                     errorMessage = if (u == null) "User not found" else null
                 )
                 onScreenLoadEnd(true)
