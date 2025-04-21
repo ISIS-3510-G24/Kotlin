@@ -64,12 +64,19 @@ fun MainScreen(
                     }
                 )
             }
-            composable("explore") { ExploreScreen(rootNavController) }
-            composable("profile") { ProfileScreen(
-                navController = navController,
-                rootNavController = rootNavController,
-                bottomItems = bottomNavItems
-            ) }
+            composable("explore") {
+                ExploreScreen(
+                    navController = rootNavController,
+                    bottomNavController = navController
+                )
+            }
+            composable("profile") {
+                ProfileScreen(
+                    navController = navController,
+                    rootNavController = rootNavController,
+                    bottomItems = bottomNavItems
+                )
+            }
             composable("publish") { PublishProductScreen(navController) }
             composable("wishlist") {
                 WishlistScreen(
