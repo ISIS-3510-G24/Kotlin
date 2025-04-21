@@ -1,5 +1,6 @@
 package com.example.unimarket.ui.views
 
+import android.app.Activity
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -51,6 +52,7 @@ import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.perf.ktx.performance
+import com.google.zxing.integration.android.IntentIntegrator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,6 +65,22 @@ fun ProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val analytics = FirebaseAnalytics.getInstance(context)
+
+    val qrLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val scannedHash = IntentIntegrator
+            .parseActivityResult(result.resultCode, result.data)
+            ?.contents
+
+        scannedHash?.let { hash ->
+            viewModel.validateOrder(
+                hashConfirm = hash,
+                onSuccess = { Toast.makeText(context, "Order validated", Toast.LENGTH_SHORT).show() },
+                onError    = { err -> Toast.makeText(context, "Error: $err", Toast.LENGTH_LONG).show() }
+            )
+        } ?: Toast.makeText(context, "Operation canceled", Toast.LENGTH_SHORT).show()
+    }
 
     // Launcher to pick image from gallery
     val imagePicker = rememberLauncherForActivityResult (
@@ -151,7 +169,6 @@ fun ProfileScreen(
 
                         Spacer(Modifier.height(16.dp))
 
-                        // ... el resto de tu menú y botones ...
                         val menu = listOf(
                             "Wishlist" to "wishlist",
                             "Edit Profile" to "edit_profile",
@@ -172,20 +189,26 @@ fun ProfileScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
-                                            analytics.logEvent(
-                                                "profile_option_clicked",
-                                                Bundle().apply {
-                                                    putString("option", label)
-                                                })
-                                            if (route == "logout") {
-                                                FirebaseAuth.getInstance().signOut()
-                                                rootNavController.navigate("login") {
-                                                    popUpTo(rootNavController.graph.startDestinationId) {
-                                                        inclusive = true
-                                                    }
-                                                }
+                                            if (route == "validate_buyer") {
+                                                val integrator = IntentIntegrator(context as Activity)
+                                                    .setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
+                                                qrLauncher.launch(integrator.createScanIntent())
                                             } else {
-                                                navController.navigate(route)
+                                                analytics.logEvent(
+                                                    "profile_option_clicked",
+                                                    Bundle().apply {
+                                                        putString("option", label)
+                                                    })
+                                                if (route == "logout") {
+                                                    FirebaseAuth.getInstance().signOut()
+                                                    rootNavController.navigate("login") {
+                                                        popUpTo(rootNavController.graph.startDestinationId) {
+                                                            inclusive = true
+                                                        }
+                                                    }
+                                                } else {
+                                                    navController.navigate(route)
+                                                }
                                             }
                                         }
                                 )
