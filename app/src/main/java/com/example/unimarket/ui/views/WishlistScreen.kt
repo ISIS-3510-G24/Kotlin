@@ -7,18 +7,22 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,9 +31,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,51 +43,116 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.tasks.await
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldPath
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 data class WishlistItem(
-    val id: String,
+    val productId: String,
     val title: String,
     val description: String,
     val imageUrl: String,
-    val price: String,
+    val price: Long,
     val available: Boolean
 )
 
+class WishlistViewModel : ViewModel() {
+    private val firestore = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
+
+    private val _wishlistItems = MutableStateFlow<List<WishlistItem>>(emptyList())
+    val wishlistItems: StateFlow<List<WishlistItem>> = _wishlistItems.asStateFlow()
+
+    private val _loading = MutableStateFlow(false)
+    val loading: StateFlow<Boolean> = _loading.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    init {
+        fetchWishlist()
+    }
+
+    fun fetchWishlist() {
+        val userId = auth.currentUser?.uid ?: return
+        _loading.value = true
+        _error.value = null
+
+        firestore.collection("User")
+            .document(userId)
+            .collection("wishlist")
+            .get()
+            .addOnSuccessListener { wishDocs ->
+                val productIds = wishDocs.documents
+                    .mapNotNull { it.getString("productID") }
+                    .toSet()
+
+                if (productIds.isEmpty()) {
+                    _wishlistItems.value = emptyList()
+                    _loading.value = false
+                    return@addOnSuccessListener
+                }
+
+                firestore.collection("Product")
+                    .whereIn(FieldPath.documentId(), productIds.toList())
+                    .get()
+                    .addOnSuccessListener { prodDocs ->
+                        val items = prodDocs.documents.mapNotNull { doc ->
+                            if (!doc.exists()) return@mapNotNull null
+                            val id = doc.id
+                            val title = doc.getString("title") ?: return@mapNotNull null
+                            val desc = doc.getString("description") ?: ""
+                            val price = doc.getLong("price") ?: 0L
+                            val urlList = doc.get("imageUrls") as? List<*>
+                            val img = (urlList?.firstOrNull() as? String).orEmpty()
+                            val status = doc.getString("status") ?: ""
+                            WishlistItem(
+                                productId = id,
+                                title = title,
+                                description = desc,
+                                imageUrl = img,
+                                price = price,
+                                available = status.equals("Available", ignoreCase = true)
+                            )
+                        }
+                        _wishlistItems.value = items
+                        _loading.value = false
+                    }
+                    .addOnFailureListener { ex ->
+                        _error.value = "Error loading products: ${ex.localizedMessage}"
+                        _loading.value = false
+                    }
+            }
+            .addOnFailureListener { ex ->
+                _error.value = "Error loading wishlist: ${ex.localizedMessage}"
+                _loading.value = false
+            }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WishlistScreen(onBack: () -> Unit) {
-    val wishlistIds = listOf("1234567")
-    var wishlistItems by remember { mutableStateOf<List<WishlistItem>>(emptyList()) }
+fun WishlistScreen(
+    onBack: () -> Unit,
+    viewModel: WishlistViewModel = viewModel()
+) {
+    val items by viewModel.wishlistItems.collectAsState()
+    val loading by viewModel.loading.collectAsState()
+    val error by viewModel.error.collectAsState()
+
     var showDialog by remember { mutableStateOf(false) }
+    var unavailableTitle by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
-        val db = Firebase.firestore
-        val loaded = wishlistIds.mapNotNull { pid ->
-            val doc = db.collection("Product").document(pid).get().await()
-            if (!doc.exists()) return@mapNotNull null
-            val title = doc.getString("title").orEmpty()
-            val desc  = doc.getString("description").orEmpty()
-            val priceNum = doc.getLong("price") ?: 0L
-            val imgList = doc.get("imageUrls") as? List<*>
-            val imgUrl = imgList?.firstOrNull() as? String? ?: ""
-            val status = doc.getString("status").orEmpty()
-            val available = status.equals("Available", ignoreCase = true)
-            WishlistItem(
-                id = pid,
-                title = title,
-                description = desc,
-                imageUrl = imgUrl,
-                price = "$${"%,d".format(priceNum)}",
-                available = available
-            )
-        }
-        wishlistItems = loaded
-
-        if (loaded.firstOrNull()?.available == false) {
+    LaunchedEffect(items) {
+        val firstUnavailable = items.firstOrNull { !it.available }
+        if (firstUnavailable != null) {
+            unavailableTitle = firstUnavailable.title
             showDialog = true
         }
     }
@@ -94,26 +163,52 @@ fun WishlistScreen(onBack: () -> Unit) {
                 title = { Text("My Wishlist") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                }
             )
         }
     ) { padding ->
         Box(
-            Modifier
+            modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
         ) {
-            LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(wishlistItems) { item ->
-                    WishlistRow(item) {
+            when {
+                loading -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+                error != null -> {
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = error!!, color = MaterialTheme.colorScheme.error)
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = { viewModel.fetchWishlist() }) {
+                            Text("Retry")
+                        }
+                    }
+                }
+                items.isEmpty() -> {
+                    Text(
+                        text = "You have no products in your wishlist",
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(items) { item ->
+                            WishlistRow(item) {
+                                if (!item.available) {
+                                    unavailableTitle = item.title
+                                    showDialog = true
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -122,15 +217,10 @@ fun WishlistScreen(onBack: () -> Unit) {
                 AlertDialog(
                     onDismissRequest = { showDialog = false },
                     title = { Text("Not Available Product :(") },
-                    text = {
-                        Text(
-                            "The product with title ${wishlistItems.firstOrNull()?.title ?: ""} " +
-                                    "is not available anymore."
-                        )
-                    },
+                    text = { Text("The product “$unavailableTitle” is not available anymore.") },
                     confirmButton = {
                         TextButton(onClick = { showDialog = false }) {
-                            Text("Aceptar")
+                            Text("Accept")
                         }
                     }
                 )
@@ -146,9 +236,14 @@ private fun WishlistRow(item: WishlistItem, onClick: () -> Unit) {
             .fillMaxWidth()
             .height(100.dp)
             .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Image(
                 painter = rememberAsyncImagePainter(item.imageUrl),
                 contentDescription = item.title,
@@ -156,12 +251,10 @@ private fun WishlistRow(item: WishlistItem, onClick: () -> Unit) {
                 modifier = Modifier
                     .size(80.dp)
                     .clip(MaterialTheme.shapes.medium)
-                    .padding(8.dp)
             )
+            Spacer(Modifier.width(12.dp))
             Column(
-                Modifier
-                    .weight(1f)
-                    .padding(start = 8.dp),
+                Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(item.title, style = MaterialTheme.typography.titleMedium)
@@ -171,12 +264,12 @@ private fun WishlistRow(item: WishlistItem, onClick: () -> Unit) {
                     maxLines = 1
                 )
             }
+            Spacer(Modifier.width(12.dp))
             Text(
-                item.price,
+                text = "$" + "%,d".format(item.price),
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (item.available) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(end = 16.dp)
+                else MaterialTheme.colorScheme.error
             )
         }
     }
