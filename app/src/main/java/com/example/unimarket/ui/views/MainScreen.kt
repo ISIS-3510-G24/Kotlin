@@ -15,6 +15,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.unimarket.ui.models.BottomNavItem
+import com.tuapp.ui.screens.ValidateDeliveryScreen
 
 //import com.example.unimarket.ui.profile.ProfileScreen
 
@@ -64,12 +65,19 @@ fun MainScreen(
                     }
                 )
             }
-            composable("explore") { ExploreScreen(rootNavController) }
-            composable("profile") { ProfileScreen(
-                navController = navController,
-                rootNavController = rootNavController,
-                bottomItems = bottomNavItems
-            ) }
+            composable("explore") {
+                ExploreScreen(
+                    navController = rootNavController,
+                    bottomNavController = navController
+                )
+            }
+            composable("profile") {
+                ProfileScreen(
+                    navController = navController,
+                    rootNavController = rootNavController,
+                    bottomItems = bottomNavItems
+                )
+            }
             composable("publish") { PublishProductScreen(navController) }
             composable("wishlist") {
                 WishlistScreen(
@@ -80,6 +88,10 @@ fun MainScreen(
             }
             composable("edit_profile") {
                 EditProfileScreen(navController = navController)
+            }
+
+            composable("validate_seller") {
+                ValidateDeliveryScreen(navController = navController)
             }
         }
     }

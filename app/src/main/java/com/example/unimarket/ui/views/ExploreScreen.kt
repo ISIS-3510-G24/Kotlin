@@ -58,6 +58,7 @@ import java.util.Locale
 @Composable
 fun ExploreScreen(
     navController: NavController,
+    bottomNavController: NavController,
     exploreViewModel: ExploreViewModel = viewModel()
 ) {
     val allProducts by exploreViewModel.products.collectAsState()
@@ -99,7 +100,7 @@ fun ExploreScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(onClick = { navController.navigate("publish") }) {
+            FloatingActionButton(onClick = { bottomNavController.navigate("publish") }) {
                 Icon(Icons.Default.Add, contentDescription = "Publish Product")
             }
         }
