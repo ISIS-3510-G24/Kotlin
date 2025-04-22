@@ -8,6 +8,8 @@ import com.example.unimarket.ui.models.Product
 import com.google.firebase.Firebase
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.analytics
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.perf.FirebasePerformance
 import com.google.firebase.perf.metrics.Trace
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +25,9 @@ class ProductDetailViewModel(
 
     private val productId: String = checkNotNull(savedStateHandle["productId"])
 
+    private val _isInWishlist = MutableStateFlow(false)
+    val isInWishlist: StateFlow<Boolean> = _isInWishlist
+
     private val _product = MutableStateFlow<Product?>(null)
     val product: StateFlow<Product?> = _product
 
@@ -34,6 +39,37 @@ class ProductDetailViewModel(
 
     init {
         fetchProduct()
+        loadWishlistState()
+    }
+
+    private fun loadWishlistState() {
+        val userId = getCurrentUserId()
+        FirebaseFirestoreSingleton
+            .getCollection("User")
+            .document(userId)
+            .collection("wishlist")
+            .document(productId)
+            .get()
+            .addOnSuccessListener { doc ->
+                _isInWishlist.value = doc.exists()
+            }
+    }
+
+    fun toggleWishlist() {
+        val userId = getCurrentUserId()
+        val docRef = FirebaseFirestoreSingleton
+            .getCollection("User")
+            .document(userId)
+            .collection("wishlist")
+            .document(productId)
+
+        if (_isInWishlist.value) {
+            docRef.delete()
+                .addOnSuccessListener { _isInWishlist.value = false }
+        } else {
+            docRef.set(mapOf("addedAt" to FieldValue.serverTimestamp()))
+                .addOnSuccessListener { _isInWishlist.value = true }
+        }
     }
 
     fun onScreenLoadStart() {
@@ -71,4 +107,7 @@ class ProductDetailViewModel(
                 onScreenLoadEnd(false)
             }
     }
+
+    private fun getCurrentUserId(): String =
+        FirebaseAuth.getInstance().currentUser?.uid ?: throw IllegalStateException("No user")
 }
