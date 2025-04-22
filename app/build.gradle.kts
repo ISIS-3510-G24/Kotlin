@@ -73,5 +73,6 @@ dependencies {
     implementation(libs.firebase.perf)
     implementation(libs.firebase.inappmessaging.display)
     implementation (libs.accompanist.flowlayout)
-    implementation(libs.zxing.core)
+    implementation (libs.zxing.android.embedded)
+
 }
