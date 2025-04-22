@@ -89,8 +89,9 @@ class WishlistViewModel : ViewModel() {
             .collection("wishlist")
             .get()
             .addOnSuccessListener { wishDocs ->
+                // Use document ID as productId
                 val productIds = wishDocs.documents
-                    .mapNotNull { it.getString("productID") }
+                    .map { it.id }
                     .toSet()
 
                 if (productIds.isEmpty()) {
@@ -108,7 +109,8 @@ class WishlistViewModel : ViewModel() {
                             val id = doc.id
                             val title = doc.getString("title") ?: return@mapNotNull null
                             val desc = doc.getString("description") ?: ""
-                            val price = doc.getLong("price") ?: 0L
+                            // Convert stored price (Double) to Long
+                            val price = doc.getDouble("price")?.toLong() ?: 0L
                             val urlList = doc.get("imageUrls") as? List<*>
                             val img = (urlList?.firstOrNull() as? String).orEmpty()
                             val status = doc.getString("status") ?: ""
