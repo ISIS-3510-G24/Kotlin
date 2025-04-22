@@ -1,6 +1,6 @@
 [versions]
 accompanistFlowlayout = "0.30.1"
-agp = "8.9.1"
+agp = "8.9.2"
 datastorePreferences = "1.1.4"
 firebaseBom = "33.12.0"
 firebaseInappmessagingDisplay = "21.0.2"
