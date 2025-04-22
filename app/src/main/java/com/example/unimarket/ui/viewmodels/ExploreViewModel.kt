@@ -11,6 +11,7 @@ import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.perf.FirebasePerformance
 import com.google.firebase.perf.metrics.Trace
@@ -40,8 +41,43 @@ class ExploreViewModel : ViewModel() {
     private val _userPreferences = MutableStateFlow<List<String>>(emptyList())
     val userPreferences: StateFlow<List<String>> = _userPreferences
 
+    private val _wishlistIds = MutableStateFlow<Set<String>>(emptySet())
+    val wishlistIds: StateFlow<Set<String>> = _wishlistIds
+
     init {
+        loadWishlist()
         loadUserPreferences()
+    }
+
+    private fun loadWishlist() {
+        val userId = getCurrentUserId()
+        FirebaseFirestoreSingleton
+            .getCollection("User")
+            .document(userId)
+            .collection("wishlist")
+            .addSnapshotListener { snaps, _ ->
+                val ids = snaps?.documents
+                    ?.map { it.id }
+                    ?.toSet() ?: emptySet()
+                _wishlistIds.value = ids
+            }
+    }
+
+    fun toggleWishlist(product: Product) {
+        val userId = getCurrentUserId()
+        val docRef = FirebaseFirestoreSingleton
+            .getCollection("User")
+            .document(userId)
+            .collection("wishlist")
+            .document(product.id)
+
+        if (_wishlistIds.value.contains(product.id)) {
+            docRef.delete()
+        } else {
+            docRef.set(mapOf(
+                "addedAt" to FieldValue.serverTimestamp()
+            ))
+        }
     }
 
     fun onScreenLoadStart() {

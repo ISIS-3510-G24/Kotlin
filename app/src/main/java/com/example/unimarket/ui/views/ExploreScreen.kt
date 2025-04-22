@@ -1,6 +1,7 @@
 package com.example.unimarket.ui.views
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,19 +13,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -41,7 +47,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -129,6 +134,8 @@ fun ExploreScreen(
                         items(recommended) { product ->
                             ProductCard(
                                 product = product,
+                                isFavorite = product.id in exploreViewModel.wishlistIds.collectAsState().value,
+                                onFavoriteClick = { exploreViewModel.toggleWishlist(product) },
                                 modifier = Modifier
                                     .width(200.dp)
                                     .height(280.dp),
@@ -156,6 +163,8 @@ fun ExploreScreen(
                         rowItems.forEach { product ->
                             ProductCard(
                                 product = product,
+                                isFavorite = product.id in exploreViewModel.wishlistIds.collectAsState().value,
+                                onFavoriteClick = { exploreViewModel.toggleWishlist(product) },
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(280.dp),
@@ -204,44 +213,69 @@ fun ExploreScreen(
 @Composable
 fun ProductCard(
     product: Product,
+    isFavorite: Boolean,
+    onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {}
 ) {
-    val formattedPrice = remember(product.price) {
-        NumberFormat.getCurrencyInstance(Locale("es", "CO")).format(product.price)
-    }
-
     Card(
         elevation = CardDefaults.cardElevation(4.dp),
         modifier = modifier
             .clickable(onClick = onClick)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            val painter = product.imageUrls.firstOrNull()
-                ?.let { url ->
-                    rememberAsyncImagePainter(model = url)
-                }
-                ?: painterResource(id = R.drawable.default_product)
-
-            Image(
-                painter = painter,
-                contentDescription = product.title,
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(140.dp),
-                contentScale = ContentScale.Crop
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = product.title,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2
-            )
-            Text(
-                text = formattedPrice,
-                style = MaterialTheme.typography.bodyMedium
-            )
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                val painter = product.imageUrls.firstOrNull()
+                    ?.let { rememberAsyncImagePainter(it) }
+                    ?: rememberAsyncImagePainter(R.drawable.default_product)
+
+                Image(
+                    painter = painter,
+                    contentDescription = product.title,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(140.dp),
+                    contentScale = ContentScale.Crop
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = product.title,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = NumberFormat.getCurrencyInstance(Locale("es", "CO"))
+                        .format(product.price),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            // Heart icon with background and tint for contrast
+            IconButton(
+                onClick = onFavoriteClick,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .size(32.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                        shape = CircleShape
+                    )
+            ) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                    contentDescription = if (isFavorite) "Remove from wishlist" else "Add to wishlist",
+                    tint = if (isFavorite)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
-
