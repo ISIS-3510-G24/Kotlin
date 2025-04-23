@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -45,8 +46,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
-import com.example.unimarket.ui.viewmodels.WishlistViewModel
 import com.example.unimarket.ui.viewmodels.WishlistItem
+import com.example.unimarket.ui.viewmodels.WishlistViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,7 +95,7 @@ fun WishlistScreen(
                     modifier = Modifier.align(Alignment.Center)
                 )
                 items.isEmpty() -> Text(
-                    text = "You have no products in your wishlist",
+                    text = "No items in wishlist",
                     modifier = Modifier.align(Alignment.Center)
                 )
                 else -> LazyColumn(
@@ -102,12 +103,16 @@ fun WishlistScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(items) { item ->
-                        WishlistRow(item) {
-                            if (!item.available) {
-                                unavailableTitle = item.title
-                                showDialog = true
+                        WishlistRow(
+                            item = item,
+                            onRemove = { viewModel.removeFromWishlist(item.productId) },
+                            onClick = {
+                                if (!item.available) {
+                                    unavailableTitle = item.title
+                                    showDialog = true
+                                }
                             }
-                        }
+                        )
                     }
                 }
             }
@@ -115,11 +120,11 @@ fun WishlistScreen(
             if (showDialog) {
                 AlertDialog(
                     onDismissRequest = { showDialog = false },
-                    title = { Text("Not Available Product :(") },
-                    text = { Text("The product “$unavailableTitle” is not available anymore.") },
+                    title = { Text("Not Available") },
+                    text = { Text("The product “$unavailableTitle” is no longer available.") },
                     confirmButton = {
                         TextButton(onClick = { showDialog = false }) {
-                            Text("Accept")
+                            Text("OK")
                         }
                     }
                 )
@@ -140,14 +145,16 @@ private fun ErrorContent(
     ) {
         Text(text = error, color = MaterialTheme.colorScheme.error)
         Spacer(Modifier.height(16.dp))
-        Button(onClick = onRetry) {
-            Text("Retry")
-        }
+        Button(onClick = onRetry) { Text("Retry") }
     }
 }
 
 @Composable
-private fun WishlistRow(item: WishlistItem, onClick: () -> Unit) {
+private fun WishlistRow(
+    item: WishlistItem,
+    onRemove: () -> Unit,
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -155,39 +162,52 @@ private fun WishlistRow(item: WishlistItem, onClick: () -> Unit) {
             .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Row(
-            Modifier
-                .fillMaxSize()
-                .padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                painter = rememberAsyncImagePainter(item.imageUrl),
-                contentDescription = item.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(MaterialTheme.shapes.medium)
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(
-                Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
+        Box(modifier = Modifier.fillMaxSize()) {
+            Row(
+                Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(item.title, style = MaterialTheme.typography.titleMedium)
+                Image(
+                    painter = rememberAsyncImagePainter(item.imageUrl),
+                    contentDescription = item.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(MaterialTheme.shapes.medium)
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(
+                    Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(item.title, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = item.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
                 Text(
-                    text = item.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1
+                    text = "\$" + "%,d".format(item.price),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (item.available) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                 )
             }
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = "$" + "%,d".format(item.price),
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (item.available) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.error
-            )
+            IconButton(
+                onClick = onRemove,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Favorite,
+                    contentDescription = "Remove from wishlist",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 }

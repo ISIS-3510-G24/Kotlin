@@ -45,19 +45,16 @@ class WishlistViewModel : ViewModel() {
             .get()
             .addOnSuccessListener { wishDocs ->
                 val productIds = wishDocs.documents.map { it.id }.toSet()
-
                 if (productIds.isEmpty()) {
                     _wishlistItems.value = emptyList()
                     _loading.value = false
                     return@addOnSuccessListener
                 }
-
                 firestore.collection("Product")
                     .whereIn(FieldPath.documentId(), productIds.toList())
                     .get()
                     .addOnSuccessListener { prodDocs ->
                         val items = prodDocs.documents.mapNotNull { doc ->
-                            if (!doc.exists()) return@mapNotNull null
                             val id = doc.id
                             val title = doc.getString("title") ?: return@mapNotNull null
                             val desc = doc.getString("description") ?: ""
@@ -65,27 +62,37 @@ class WishlistViewModel : ViewModel() {
                             val urlList = doc.get("imageUrls") as? List<*>
                             val img = (urlList?.firstOrNull() as? String).orEmpty()
                             val status = doc.getString("status") ?: ""
-
                             WishlistItem(
                                 productId = id,
                                 title = title,
                                 description = desc,
                                 imageUrl = img,
                                 price = price,
-                                available = status.equals("Available", ignoreCase = true)
+                                available = status.equals("Available", true)
                             )
                         }
                         _wishlistItems.value = items
                         _loading.value = false
                     }
                     .addOnFailureListener { ex ->
-                        _error.value = "Error loading products: ${'$'}{ex.localizedMessage}"
+                        _error.value = "Error loading products: ${ex.localizedMessage}"
                         _loading.value = false
                     }
             }
             .addOnFailureListener { ex ->
-                _error.value = "Error loading wishlist: ${'$'}{ex.localizedMessage}"
+                _error.value = "Error loading wishlist: ${ex.localizedMessage}"
                 _loading.value = false
             }
+    }
+
+    fun removeFromWishlist(productId: String) {
+        val userId = auth.currentUser?.uid ?: return
+        firestore.collection("User")
+            .document(userId)
+            .collection("wishlist")
+            .document(productId)
+            .delete()
+            .addOnSuccessListener { fetchWishlist() }
+            .addOnFailureListener { ex -> _error.value = "Failed to remove: ${ex.localizedMessage}" }
     }
 }
