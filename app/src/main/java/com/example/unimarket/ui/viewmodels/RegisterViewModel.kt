@@ -4,7 +4,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
+import com.example.unimarket.data.FirebaseFirestoreSingleton
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.auth.FirebaseAuth

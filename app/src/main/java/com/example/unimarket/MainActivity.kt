@@ -16,7 +16,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.unimarket.ui.data.PreferencesManager
+import com.example.unimarket.data.PreferencesManager
 import com.example.unimarket.ui.theme.UniMarketTheme
 import com.example.unimarket.ui.viewmodels.ProductDetailViewModel
 import com.example.unimarket.ui.views.LoginScreen
