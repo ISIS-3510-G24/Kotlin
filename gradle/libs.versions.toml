@@ -1,6 +1,7 @@
 [versions]
 accompanistFlowlayout = "0.30.1"
 agp = "8.9.2"
+biometric = "1.1.0"
 datastorePreferences = "1.1.4"
 firebaseBom = "33.12.0"
 firebaseInappmessagingDisplay = "21.0.2"
@@ -21,6 +22,7 @@ coil = "2.3.0"
 firebase-analytics-ktx = "22.4.0"
 materialIconsExtended = "1.7.8"
 navigationCompose = "2.8.9"
+securityCrypto = "1.1.0"
 storage = "21.0.1"
 material3 = "1.3.2"
 firebaseCrashlytics = "19.4.2"
@@ -32,10 +34,12 @@ zxingAndroidEmbedded = "4.3.0"
 
 [libraries]
 accompanist-flowlayout = { module = "com.google.accompanist:accompanist-flowlayout", version.ref = "accompanistFlowlayout" }
+androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics", version.ref = "firebaseAnalytics" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics", version.ref = "firebaseCrashlytics" }
