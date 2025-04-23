@@ -3,7 +3,7 @@ package com.example.unimarket.ui.viewmodels
 import android.net.Uri
 import androidx.core.os.bundleOf
 import androidx.lifecycle.ViewModel
-import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
+import com.example.unimarket.data.FirebaseFirestoreSingleton
 import com.example.unimarket.ui.models.ProfileUiState
 import com.example.unimarket.ui.models.User
 import com.google.firebase.Firebase

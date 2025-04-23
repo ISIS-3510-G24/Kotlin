@@ -1,4 +1,4 @@
-package com.example.unimarket.ui.data
+package com.example.unimarket.data
 
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey

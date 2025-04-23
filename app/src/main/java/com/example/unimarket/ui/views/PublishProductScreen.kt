@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
-import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
+import com.example.unimarket.data.FirebaseFirestoreSingleton
 import com.example.unimarket.ui.models.ClassItem
 import com.example.unimarket.ui.models.Major
 import com.example.unimarket.ui.models.Product

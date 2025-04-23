@@ -22,7 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.example.unimarket.ui.data.PreferencesManager
+import com.example.unimarket.data.PreferencesManager
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.launch
 

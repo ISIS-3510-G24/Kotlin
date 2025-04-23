@@ -4,7 +4,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.core.os.bundleOf
 import androidx.lifecycle.ViewModel
-import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
+import com.example.unimarket.data.FirebaseFirestoreSingleton
 import com.example.unimarket.ui.models.Product
 import com.example.unimarket.ui.models.User
 import com.google.firebase.analytics.FirebaseAnalytics
