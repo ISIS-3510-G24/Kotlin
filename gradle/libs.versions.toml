@@ -1,33 +1,37 @@
 [versions]
-agp = "8.9.0"
-datastorePreferences = "1.1.3"
-firebaseBom = "33.11.0"
+accompanistFlowlayout = "0.30.1"
+agp = "8.9.2"
+datastorePreferences = "1.1.4"
+firebaseBom = "33.12.0"
 firebaseInappmessagingDisplay = "21.0.2"
 gradle = "7.0.4"
 kotlin = "2.0.0"
-coreKtx = "1.15.0"
+coreKtx = "1.16.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.10.1"
-composeBom = "2025.03.00"
+composeBom = "2025.04.00"
 google-services = "4.4.2"
 firebase-auth = "23.2.0"
-datastore = "1.1.3"
+datastore = "1.1.4"
 firestore = "25.1.3"
 coil = "2.3.0"
 firebase-analytics-ktx = "22.4.0"
 materialIconsExtended = "1.7.8"
 navigationCompose = "2.8.9"
 storage = "21.0.1"
-material3 = "1.3.1"
+material3 = "1.3.2"
 firebaseCrashlytics = "19.4.2"
 firebaseAnalytics = "22.4.0"
 firebasePerformance = "21.0.5"
 firebaseVertexai = "16.3.0"
+accompanist = "0.30.1"
+zxingAndroidEmbedded = "4.3.0"
 
 [libraries]
+accompanist-flowlayout = { module = "com.google.accompanist:accompanist-flowlayout", version.ref = "accompanistFlowlayout" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
@@ -61,6 +65,8 @@ firebase-analytics-ktx = { module = "com.google.firebase:firebase-analytics-ktx"
 storage = { module = "com.google.firebase:firebase-storage", version.ref = "storage" }
 firebase-performance = { module = "com.google.firebase:firebase-perf", version.ref = "firebasePerformance" }
 firebase-vertexai = { group = "com.google.firebase", name = "firebase-vertexai", version.ref = "firebaseVertexai" }
+accompanist = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
+zxing-android-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxingAndroidEmbedded" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
