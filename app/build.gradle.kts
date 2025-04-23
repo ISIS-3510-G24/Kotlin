@@ -75,6 +75,5 @@ dependencies {
     implementation (libs.accompanist.flowlayout)
     implementation (libs.zxing.android.embedded)
     implementation (libs.androidx.biometric)
-    implementation (libs.androidx.security.crypto)
 
 }
