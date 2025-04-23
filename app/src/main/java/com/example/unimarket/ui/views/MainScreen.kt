@@ -52,9 +52,11 @@ fun MainScreen(
                 )
             }
             composable("orders") {
-                OrdersScreen(onNavigateToOrder = { orderId ->
-                }
+                OrdersScreen(
+                    navController = rootNavController,
+                    bottomNavController = navController
                 )
+
             }
             composable("chat") {
                 ChatScreen(

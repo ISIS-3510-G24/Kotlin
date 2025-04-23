@@ -15,100 +15,109 @@ import kotlinx.coroutines.tasks.await
 enum class OrderTab { HISTORY, BUYING, SELLING }
 
 data class Order(
-    val id: String,
-    val buyerID: String,
-    val sellerID: String,
+    val id:           String,
+    val productId:    String,
+    val buyerID:      String,
+    val sellerID:     String,
     val productTitle: String,
-    val imageUrl: String,
-    val orderDate: Timestamp,
-    val price: Double,
-    val status: String
+    val imageUrl:     String,
+    val orderDate:    Timestamp,
+    val price:        Double,
+    val status:       String
 )
 
 class OrdersViewModel : ViewModel() {
-    private val db = FirebaseFirestore.getInstance()
+    private val db   = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
-    private val _orders = MutableStateFlow<List<Order>>(emptyList())
+    private val _orders     = MutableStateFlow<List<Order>>(emptyList())
     val orders: StateFlow<List<Order>> = _orders.asStateFlow()
-
-    private val _loading = MutableStateFlow(true)
-    val isLoading: StateFlow<Boolean> = _loading.asStateFlow()
-
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
 
     private val _currentTab = MutableStateFlow(OrderTab.HISTORY)
     val currentTab: StateFlow<OrderTab> = _currentTab.asStateFlow()
 
-    fun setTab(tab: OrderTab) {
-        _currentTab.value = tab
-    }
+    private val _isLoading  = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    fun getCurrentUserId(): String? = auth.currentUser?.uid
+    private val _error      = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
 
     init {
         loadOrders()
     }
 
-    fun loadOrders() {
-        viewModelScope.launch {
-            _loading.value = true
-            _error.value = null
+    fun setTab(tab: OrderTab) {
+        _currentTab.value = tab
+    }
 
-            val userId = getCurrentUserId()
-            if (userId == null) {
-                _error.value = "User not authenticated"
-                _loading.value = false
-                return@launch
+    fun getCurrentUserId(): String? =
+        auth.currentUser?.uid
+
+    fun loadOrders() = viewModelScope.launch {
+        _isLoading.value = true
+        _error.value     = null
+
+        val uid = getCurrentUserId()
+        if (uid == null) {
+            _error.value = "User not authenticated"
+            _isLoading.value = false
+            return@launch
+        }
+
+        try {
+            val snap = db.collection("orders").get().await()
+            val tmp  = mutableListOf<Order>()
+
+            snap.documents.forEach { doc ->
+                val d = doc.data ?: return@forEach
+                val buyer  = d["buyerID"]  as? String ?: return@forEach
+                val seller = d["sellerID"] as? String ?: return@forEach
+                if (buyer != uid && seller != uid) return@forEach
+
+                val pid    = d["productID"] as? String ?: return@forEach
+                val date   = d["orderDate"] as? Timestamp ?: Timestamp.now()
+                val price  = (d["price"] as? Number)?.toDouble() ?: 0.0
+                val status = d["status"] as? String ?: ""
+
+                tmp += Order(
+                    id           = doc.id,
+                    productId    = pid,
+                    buyerID      = buyer,
+                    sellerID     = seller,
+                    productTitle = "",
+                    imageUrl     = "",
+                    orderDate    = date,
+                    price        = price,
+                    status       = status
+                )
             }
 
-            try {
-                val snapshot = db.collection("orders").get().await()
-                val ordersList = snapshot.documents.mapNotNull { doc ->
-                    val data = doc.data ?: return@mapNotNull null
-                    val buyerID = data["buyerID"] as? String ?: return@mapNotNull null
-                    val sellerID = data["sellerID"] as? String ?: return@mapNotNull null
-                    val productID = data["productID"] as? String ?: return@mapNotNull null
-                    val orderDate = data["orderDate"] as? Timestamp ?: Timestamp.now()
-                    val price = (data["price"] as? Number)?.toDouble() ?: 0.0
-                    val status = data["status"] as? String ?: ""
-
-                    Triple(
-                        Order(
-                            id = doc.id,
-                            buyerID = buyerID,
-                            sellerID = sellerID,
-                            productTitle = "", // Placeholder
-                            imageUrl = "", // Placeholder
-                            orderDate = orderDate,
-                            price = price,
-                            status = status
-                        ), productID, doc.id
+            val pids    = tmp.map { it.productId }.distinct()
+            val prodMap = if (pids.isNotEmpty()) {
+                db.collection("Product")
+                    .whereIn(FieldPath.documentId(), pids)
+                    .get().await()
+                    .documents
+                    .associateBy(
+                        { it.id },
+                        { doc ->
+                            val title = doc.getString("title").orEmpty()
+                            val imgs  = doc.get("imageUrls") as? List<*> ?: emptyList<Any>()
+                            val img   = imgs.firstOrNull() as? String ?: ""
+                            title to img
+                        }
                     )
-                }
+            } else emptyMap()
 
-                val productIDs = ordersList.map { it.second }.distinct()
-                val productDocs = if (productIDs.isNotEmpty()) {
-                    db.collection("Product").whereIn(FieldPath.documentId(), productIDs).get().await().documents
-                } else emptyList()
+            _orders.value = tmp.map { o ->
+                val (t, img) = prodMap[o.productId] ?: ("" to "")
+                o.copy(productTitle = t, imageUrl = img)
+            }.sortedByDescending { it.orderDate.toDate() }
 
-                val productMap = productDocs.associateBy({ it.id }, {
-                    val title = it.getString("title") ?: ""
-                    val images = it.get("imageUrls") as? List<*> ?: emptyList<Any>()
-                    val firstImage = images.firstOrNull() as? String ?: ""
-                    Pair(title, firstImage)
-                })
-
-                _orders.value = ordersList.mapNotNull { (order, pid, _) ->
-                    val product = productMap[pid] ?: return@mapNotNull null
-                    order.copy(productTitle = product.first, imageUrl = product.second)
-                }
-                _loading.value = false
-            } catch (e: Exception) {
-                _error.value = e.localizedMessage
-                _loading.value = false
-            }
+        } catch (e: Exception) {
+            _error.value = e.localizedMessage ?: "Error loading orders"
+        } finally {
+            _isLoading.value = false
         }
     }
 }
