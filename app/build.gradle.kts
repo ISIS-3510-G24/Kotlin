@@ -72,4 +72,7 @@ dependencies {
     implementation(libs.firebase.analytics.ktx)
     implementation(libs.firebase.perf)
     implementation(libs.firebase.inappmessaging.display)
+    implementation (libs.accompanist.flowlayout)
+    implementation (libs.zxing.android.embedded)
+
 }

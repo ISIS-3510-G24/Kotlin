@@ -64,12 +64,19 @@ fun MainScreen(
                     }
                 )
             }
-            composable("explore") { ExploreScreen(navController) }
-            composable("profile") { ProfileScreen(
-                navController = navController,
-                rootNavController = rootNavController,
-                bottomItems = bottomNavItems
-            ) }
+            composable("explore") {
+                ExploreScreen(
+                    navController = rootNavController,
+                    bottomNavController = navController
+                )
+            }
+            composable("profile") {
+                ProfileScreen(
+                    navController = navController,
+                    rootNavController = rootNavController,
+                    bottomItems = bottomNavItems
+                )
+            }
             composable("publish") { PublishProductScreen(navController) }
             composable("wishlist") {
                 WishlistScreen(
@@ -80,6 +87,10 @@ fun MainScreen(
             }
             composable("edit_profile") {
                 EditProfileScreen(navController = navController)
+            }
+
+            composable("validate_seller") {
+                ValidateDeliveryScreen(navController = navController)
             }
         }
     }

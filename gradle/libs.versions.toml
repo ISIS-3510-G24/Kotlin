@@ -1,5 +1,6 @@
 [versions]
-agp = "8.9.1"
+accompanistFlowlayout = "0.30.1"
+agp = "8.9.2"
 datastorePreferences = "1.1.4"
 firebaseBom = "33.12.0"
 firebaseInappmessagingDisplay = "21.0.2"
@@ -26,8 +27,11 @@ firebaseCrashlytics = "19.4.2"
 firebaseAnalytics = "22.4.0"
 firebasePerformance = "21.0.5"
 firebaseVertexai = "16.3.0"
+accompanist = "0.30.1"
+zxingAndroidEmbedded = "4.3.0"
 
 [libraries]
+accompanist-flowlayout = { module = "com.google.accompanist:accompanist-flowlayout", version.ref = "accompanistFlowlayout" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
@@ -61,6 +65,8 @@ firebase-analytics-ktx = { module = "com.google.firebase:firebase-analytics-ktx"
 storage = { module = "com.google.firebase:firebase-storage", version.ref = "storage" }
 firebase-performance = { module = "com.google.firebase:firebase-perf", version.ref = "firebasePerformance" }
 firebase-vertexai = { group = "com.google.firebase", name = "firebase-vertexai", version.ref = "firebaseVertexai" }
+accompanist = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
+zxing-android-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxingAndroidEmbedded" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
