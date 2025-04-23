@@ -3,7 +3,7 @@ package com.example.unimarket.ui.viewmodels
 import androidx.core.os.bundleOf
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
+import com.example.unimarket.data.FirebaseFirestoreSingleton
 import com.example.unimarket.ui.models.Product
 import com.google.firebase.Firebase
 import com.google.firebase.analytics.FirebaseAnalytics
