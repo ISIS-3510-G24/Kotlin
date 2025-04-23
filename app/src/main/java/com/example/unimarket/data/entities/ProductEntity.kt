@@ -1,4 +1,4 @@
-package com.example.unimarket.data
+package com.example.unimarket.data.entities
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
