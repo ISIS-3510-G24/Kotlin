@@ -1,4 +1,4 @@
-package com.tuapp.ui.screens
+package com.example.unimarket.ui.views
 
 import android.graphics.Bitmap
 import android.util.Log
@@ -35,93 +35,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FieldPath
-import com.google.firebase.firestore.FirebaseFirestore
+import com.example.unimarket.ui.viewmodels.OrderWithProduct
+import com.example.unimarket.ui.viewmodels.ValidateDeliveryViewModel
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
-// --- DATA CLASS ---
-data class OrderWithProduct(
-    val orderId: String,
-    val productTitle: String,
-    val hashConfirm: String
-)
-
-// --- VIEWMODEL ---
-class ValidateDeliveryViewModel : ViewModel() {
-    private val firestore = FirebaseFirestore.getInstance()
-    private val auth = FirebaseAuth.getInstance()
-
-    private val _orders = MutableStateFlow<List<OrderWithProduct>>(emptyList())
-    val orders: StateFlow<List<OrderWithProduct>> = _orders.asStateFlow()
-
-    private val _loading = MutableStateFlow(false)
-    val loading: StateFlow<Boolean> = _loading.asStateFlow()
-
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
-
-    init {
-        fetchOrders()
-    }
-
-    fun fetchOrders() {
-        val sellerId = auth.currentUser?.uid ?: return
-        _loading.value = true
-        _error.value = null
-
-        firestore.collection("orders")
-            .whereEqualTo("sellerID", sellerId)
-            .get()
-            .addOnSuccessListener { orderDocs ->
-                val orders = orderDocs.documents
-                if (orders.isEmpty()) {
-                    _orders.value = emptyList()
-                    _loading.value = false
-                    return@addOnSuccessListener
-                }
-
-                val productIds = orders.mapNotNull { it.getString("productID") }.toSet()
-
-                firestore.collection("Product")
-                    .whereIn(FieldPath.documentId(), productIds.toList())
-                    .get()
-                    .addOnSuccessListener { productDocs ->
-                        val productMap = productDocs.documents.associateBy(
-                            { it.id },
-                            { it.getString("title") ?: "Product without title" }
-                        )
-
-                        val orderList = orders.mapNotNull { doc ->
-                            val productId = doc.getString("productID") ?: return@mapNotNull null
-                            val title = productMap[productId] ?: "Product without title"
-                            val hash = doc.getString("hashConfirm") ?: return@mapNotNull null
-                            OrderWithProduct(doc.id, title, hash)
-                        }
-
-                        _orders.value = orderList
-                        _loading.value = false
-                    }
-                    .addOnFailureListener { ex ->
-                        _error.value = "Error on obtaining product: ${ex.localizedMessage}"
-                        _loading.value = false
-                    }
-            }
-            .addOnFailureListener { ex ->
-                _error.value = "Error on obtaining orders: ${ex.localizedMessage}"
-                _loading.value = false
-            }
-    }
-}
-
-// --- MAIN SCREEN ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ValidateDeliveryScreen(
@@ -134,74 +54,97 @@ fun ValidateDeliveryScreen(
     var selectedOrder by remember { mutableStateOf<OrderWithProduct?>(null) }
 
     Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("Validate Delivery (Seller)") })
-        }
+        topBar = { TopAppBar(title = { Text("Validate Delivery (Seller)") }) }
     ) { padding ->
-        Box(modifier = Modifier
-            .padding(padding)
-            .fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
             when {
-                loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-                error != null -> {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = error ?: "", color = MaterialTheme.colorScheme.error)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.fetchOrders() }) {
-                            Text("Retry")
-                        }
-                    }
-                }
-                selectedOrder != null -> {
-                    val order = selectedOrder!!
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("Order: ${order.productTitle}", style = MaterialTheme.typography.titleMedium)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("QR code to confirm delivery", style = MaterialTheme.typography.titleLarge)
-                        Spacer(modifier = Modifier.height(24.dp))
-                        generateQrBitmap(order.hashConfirm)?.let { bmp ->
-                            Image(
-                                bitmap = bmp.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(250.dp)
-                                    .background(Color.White),
-                                contentScale = ContentScale.Crop
-                            )
-                        } ?: Text("Error on generating QR", color = MaterialTheme.colorScheme.error)
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Button(onClick = { selectedOrder = null }) {
-                            Text("Close")
-                        }
-                    }
-                }
-                else -> {
-                    LazyColumn(
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(orders) { order ->
-                            Button(
-                                onClick = { selectedOrder = order },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Order: ${order.productTitle}")
-                            }
-                        }
-                    }
-                }
+                loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                error != null -> ErrorContent(
+                    error = error!!,
+                    onRetry = { viewModel.fetchOrders() },
+                    modifier = Modifier.align(Alignment.Center)
+                )
+                selectedOrder != null -> SelectedOrderContent(
+                    order = selectedOrder!!,
+                    onClose = { selectedOrder = null }
+                )
+                else -> OrdersList(
+                    orders = orders,
+                    onSelect = { selectedOrder = it }
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun OrdersList(
+    orders: List<OrderWithProduct>,
+    onSelect: (OrderWithProduct) -> Unit
+) {
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(orders) { order ->
+            Button(
+                onClick = { onSelect(order) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Order: ${order.productTitle}")
+            }
+        }
+    }
+}
+
+@Composable
+private fun SelectedOrderContent(
+    order: OrderWithProduct,
+    onClose: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // CORRECTED INTERPOLATION
+        Text("Order: ${order.productTitle}", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("QR code to confirm delivery", style = MaterialTheme.typography.titleLarge)
+        Spacer(modifier = Modifier.height(24.dp))
+        generateQrBitmap(order.hashConfirm)?.let { bmp ->
+            Image(
+                bitmap = bmp.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(250.dp)
+                    .background(Color.White),
+                contentScale = ContentScale.Crop
+            )
+        } ?: Text("Error generating QR", color = MaterialTheme.colorScheme.error)
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(onClick = onClose) { Text("Close") }
+    }
+}
+
+@Composable
+private fun ErrorContent(
+    error: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = error, color = MaterialTheme.colorScheme.error)
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onRetry) { Text("Retry") }
     }
 }
 
@@ -215,7 +158,7 @@ fun generateQrBitmap(data: String): Bitmap? {
             }
         }
     } catch (e: Exception) {
-        Log.e("GenerateQR", "Error on en generating QR", e)
+        Log.e("GenerateQR", "Error generating QR", e)
         null
     }
 }
