@@ -1,13 +1,12 @@
 package com.example.unimarket.ui.views
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,234 +23,150 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
-
-// Data class matching the structure of documents in the "finds" collection
-data class FindItem(
-    val id: String = "",
-    val title: String = "",
-    val description: String = "",
-    val image: String = "",
-    val status: String = "",
-    val major: String = "",
-    val offerCount: Int = 0
-)
+import com.example.unimarket.R
+import com.example.unimarket.ui.viewmodels.FindItem
+import com.example.unimarket.ui.viewmodels.FindOfferViewModel
 
 @Composable
 fun FindOfferScreen(
-    onNavigateToProductDetail: (String) -> Unit
+    onNavigateToProductDetail: (String) -> Unit,
+    viewModel: FindOfferViewModel = viewModel()
 ) {
-    // State for storing Firestore data
-    var findList by remember { mutableStateOf(listOf<FindItem>()) }
+    val uiState by viewModel.uiState.collectAsState()
+    val items            = uiState.findList
+    val currentUserMajor = uiState.userMajor
+    val showBanner       = uiState.showGreetingBanner
+    val isSearching      = uiState.isSearchVisible
+    val searchText       = uiState.searchText
 
-    LaunchedEffect(Unit) {
-        val db = Firebase.firestore
-        db.collection("finds")
-            .get()
-            .addOnSuccessListener { querySnapshot ->
-                val items = querySnapshot.documents.map { doc ->
-                    FindItem(
-                        id = doc.id,
-                        title = doc.getString("title") ?: "",
-                        description = doc.getString("description") ?: "",
-                        image = doc.getString("image") ?: "",
-                        status = doc.getString("status") ?: "",
-                        major = doc.getString("major") ?: "",
-                        offerCount = doc.getLong("offerCount")?.toInt() ?: 0
-                    )
-                }
-                findList = items
-            }
-            .addOnFailureListener {
-                // handle error if needed
-            }
-    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
+            .padding(top = if (showBanner) 100.dp else 0.dp)
+    ) {
+        TopBarWithSearch(
+            isSearchVisible = isSearching,
+            searchText      = searchText,
+            onSearchClick   = viewModel::onSearchClick,
+            onTextChange    = viewModel::onTextChange,
+            onClearSearch   = viewModel::onClearSearch
+        )
 
-    // UI states for your existing features
-    var showBadNewsDialog by remember { mutableStateOf(true) }
-    var showGreetingBanner by remember { mutableStateOf(false) }
-    var isSearchVisible by remember { mutableStateOf(false) }
-    var searchText by remember { mutableStateOf("") }
-    val coroutineScope = rememberCoroutineScope()
+        Spacer(Modifier.height(12.dp))
 
-    // Main container using Box to overlay the greeting banner
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Greeting banner at the top center if condition is met
-        if (showGreetingBanner) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp)
-                    .align(Alignment.TopCenter),
-                color = MaterialTheme.colorScheme.primary
-            ) {
+        LazyRow(
+            contentPadding        = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(listOf(
+                "ALL REQUESTS", "MATERIALS", "TECHNOLOGY",
+                "SPORTS", "BOOKS", "MUSICAL INSTRUMENTS",
+                "SUITS", "TOYS"
+            )) { cat ->
                 Text(
-                    text = "Tomorrow we will have more products that might interest you, take advantage before they run out. Good night!",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White,
-                    modifier = Modifier.padding(20.dp),
-                    textAlign = TextAlign.Center
+                    text  = cat,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
             }
         }
 
-        // Main content below the banner
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .verticalScroll(rememberScrollState())
-                .padding(top = if (showGreetingBanner) 130.dp else 0.dp)
-        ) {
-            // TopBar with "New Find" button and search icon/field
-            TopBarWithSearch(
-                isSearchVisible = isSearchVisible,
-                searchText = searchText,
-                onSearchClick = { isSearchVisible = !isSearchVisible },
-                onTextChange = { searchText = it },
-                onClearSearch = {
-                    searchText = ""
-                    isSearchVisible = false
-                }
-            )
+        Spacer(Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(12.dp))
+        SectionTitle("All")
+        SectionRow(
+            items   = items,
+            onClick = onNavigateToProductDetail
+        )
 
-            // Categories in horizontal scroll
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp)
-            ) {
-                items(
-                    listOf(
-                        "ALL REQUESTS", "MATERIALS", "TECHNOLOGY",
-                        "SPORTS", "BOOKS", "MUSICAL INSTRUMENTS", "SUITS", "TOYS"
-                    )
-                ) { cat ->
-                    Text(
-                        text = cat,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
+        SectionTitle("From Your Major")
+        SectionColumn(
+            items   = items.filter { it.major == currentUserMajor },
+            onClick = onNavigateToProductDetail
+        )
 
-            Spacer(modifier = Modifier.height(16.dp))
+        SectionTitle("Selling out")
+        SectionColumn(
+            items   = items.filter { it.status == "active" },
+            onClick = onNavigateToProductDetail
+        )
 
-            // "All" section
-            Text(
-                text = "All",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            val allItems = findList.filter { it.image.isNotBlank() }.take(3)
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp)
-            ) {
-                items(allItems) { product ->
-                    ProductCard(
-                        title = product.title,
-                        date = product.description,
-                        imageUrl = product.image,
-                        showFindButton = true,
-                        showOfferButton = true,
-                        onClick = { onNavigateToProductDetail(product.id) },
-                        cardWidth = 260.dp,
-                        imageHeight = 220.dp
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // "From Your Major" section
-            Text(
-                text = "From Your Major",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            val fromYourMajorItems = findList.filter { it.image.isNotBlank() }.take(2)
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
-            ) {
-                fromYourMajorItems.forEach { product ->
-                    HorizontalProductCard(
-                        title = product.title,
-                        subtitle = product.description,
-                        imageUrl = product.image,
-                        onClick = { onNavigateToProductDetail(product.id) }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-
-            // "Selling out" section
-            Text(
-                text = "Selling out",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            val sellingOutItems = findList.filter { it.image.isNotBlank() }.take(2)
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
-            ) {
-                sellingOutItems.forEach { product ->
-                    HorizontalProductCard(
-                        title = product.title,
-                        subtitle = product.description,
-                        imageUrl = product.image,
-                        onClick = { onNavigateToProductDetail(product.id) }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-        }
+        Spacer(Modifier.height(24.dp))
     }
 }
 
-/**
- * Top bar with "Find", "Offer" and a search icon or field on the right.
- */
+@Composable
+private fun SectionTitle(text: String) {
+    Text(
+        text     = text,
+        style    = MaterialTheme.typography.titleMedium,
+        color    = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier.padding(start = 16.dp)
+    )
+    Spacer(Modifier.height(8.dp))
+}
+
+@Composable
+private fun SectionRow(
+    items: List<FindItem>,
+    onClick: (String) -> Unit
+) {
+    LazyRow(
+        contentPadding        = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(items) { product ->
+            ProductCard(
+                item    = product,
+                onClick = { onClick(product.id) }
+            )
+        }
+    }
+    Spacer(Modifier.height(16.dp))
+}
+
+@Composable
+private fun SectionColumn(
+    items: List<FindItem>,
+    onClick: (String) -> Unit
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier            = Modifier.padding(horizontal = 16.dp)
+    ) {
+        items.forEach { product ->
+            HorizontalProductCard(
+                item    = product,
+                onClick = { onClick(product.id) }
+            )
+        }
+    }
+    Spacer(Modifier.height(16.dp))
+}
+
 @Composable
 fun TopBarWithSearch(
     isSearchVisible: Boolean,
@@ -261,205 +176,161 @@ fun TopBarWithSearch(
     onClearSearch: () -> Unit
 ) {
     Row(
-        modifier = Modifier
+        modifier              = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // "New Find Button"
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(
-                onClick = { /* Logic for 'New Find' */ },
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                Text("NEW FIND")
-            }
+        Button(
+            onClick = { /* TODO: New Find */ },
+            colors  = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Text("NEW FIND", color = Color.White)
         }
 
         if (!isSearchVisible) {
             IconButton(onClick = onSearchClick) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search Icon"
-                )
+                Icon(Icons.Default.Search, contentDescription = "Search")
             }
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextField(
-                    value = searchText,
+                    value         = searchText,
                     onValueChange = onTextChange,
-                    singleLine = true,
-                    modifier = Modifier.width(200.dp),
-                    placeholder = { Text("Search...") },
-                    textStyle = MaterialTheme.typography.bodyMedium
+                    placeholder   = { Text("Search…") },
+                    singleLine    = true,
+                    modifier      = Modifier
+                        .width(200.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = MaterialTheme.shapes.small
+                        )
                 )
-                Spacer(modifier = Modifier.width(8.dp))
                 IconButton(onClick = onClearSearch) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close Search"
-                    )
+                    Icon(Icons.Default.Close, contentDescription = "Clear")
                 }
             }
         }
     }
 }
 
-/**
- * Vertical card for large products (using Coil).
- * We let the card wrap its height by using width(...) + wrapContentHeight().
- */
 @Composable
 fun ProductCard(
-    title: String,
-    date: String,
-    imageUrl: String,
-    showFindButton: Boolean = true,
-    showOfferButton: Boolean = true,
-    onClick: () -> Unit,
-    cardWidth: Dp = 260.dp,
-    imageHeight: Dp = 200.dp
+    item: FindItem,
+    onClick: () -> Unit
 ) {
     Card(
+        onClick  = onClick,
         modifier = Modifier
-            .width(cardWidth)
-            .wrapContentHeight(), // Let the card grow as needed
-        onClick = onClick
+            .width(260.dp)
+            .wrapContentHeight(),
+        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        // We'll space items by 8dp so the content doesn't get squashed
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // 1) The image
-            Box(
-                modifier = Modifier
+        Column(modifier = Modifier.padding(8.dp)) {
+            val painter =
+                if (item.image.isNotBlank()) rememberAsyncImagePainter(item.image)
+                else painterResource(R.drawable.default_product)
+
+            Image(
+                painter           = painter,
+                contentDescription= item.title,
+                modifier          = Modifier
                     .fillMaxWidth()
-                    .height(imageHeight),
-                contentAlignment = Alignment.Center
-            ) {
-                val painter = rememberAsyncImagePainter(
-                    model = imageUrl,
-                    contentScale = ContentScale.Crop
-                )
-                Image(
-                    painter = painter,
-                    contentDescription = "Product Image",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            }
-
-            // 2) The text columns (left-aligned)
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Start
-                )
-                Text(
-                    text = date,
-                    style = MaterialTheme.typography.labelSmall,
-                    textAlign = TextAlign.Start
-                )
-            }
-
-            // 3) The row for two side-by-side buttons
+                    .height(160.dp)
+                    .clip(MaterialTheme.shapes.small),
+                contentScale      = ContentScale.Crop
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text     = item.title,
+                style    = MaterialTheme.typography.bodyMedium,
+                color    = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text     = item.description,
+                style    = MaterialTheme.typography.labelSmall,
+                color    = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.height(40.dp)
+            )
+            Spacer(Modifier.height(8.dp))
             Row(
-                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier              = Modifier.fillMaxWidth()
             ) {
-                if (showFindButton) {
-                    Button(
-                        onClick = onClick,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Find", textAlign = TextAlign.Center)
-                    }
+                Button(
+                    onClick  = onClick,
+                    modifier = Modifier.weight(1f),
+                    colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Find", color = Color.White)
                 }
-                if (showOfferButton) {
-                    Button(
-                        onClick = onClick,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Offer", textAlign = TextAlign.Center)
-                    }
+                Button(
+                    onClick  = onClick,
+                    modifier = Modifier.weight(1f),
+                    colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Offer", color = Color.White)
                 }
             }
         }
     }
 }
 
-/**
- * Horizontal card for products (using Coil).
- */
 @Composable
 fun HorizontalProductCard(
-    title: String,
-    subtitle: String,
-    imageUrl: String,
-    onClick: () -> Unit,
-    cardHeight: Dp = 80.dp
+    item: FindItem,
+    onClick: () -> Unit
 ) {
     Card(
-        elevation = CardDefaults.cardElevation(2.dp),
+        onClick  = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .height(cardHeight),
-        onClick = onClick
+            .height(80.dp),
+        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start
+            modifier          = Modifier.padding(8.dp)
         ) {
-            // Coil image on the left
-            val painter = rememberAsyncImagePainter(
-                model = imageUrl,
-                contentScale = ContentScale.Crop
-            )
+            val painter =
+                if (item.image.isNotBlank()) rememberAsyncImagePainter(item.image)
+                else painterResource(R.drawable.default_product)
+
             Image(
-                painter = painter,
-                contentDescription = "Product Image",
-                modifier = Modifier
+                painter           = painter,
+                contentDescription= item.title,
+                modifier          = Modifier
                     .size(60.dp)
                     .clip(MaterialTheme.shapes.small),
-                contentScale = ContentScale.Crop
+                contentScale      = ContentScale.Crop
             )
-            Spacer(modifier = Modifier.width(12.dp))
-            // Middle text
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
-            ) {
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium
+                    text     = item.title,
+                    style    = MaterialTheme.typography.bodyMedium,
+                    color    = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    text     = item.description,
+                    style    = MaterialTheme.typography.labelSmall,
+                    color    = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            // Right arrow
-            IconButton(onClick = onClick) {
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowRight,
-                    contentDescription = "Go",
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+            Icon(
+                imageVector        = Icons.Default.KeyboardArrowRight,
+                contentDescription = "Go",
+                tint               = MaterialTheme.colorScheme.onBackground
+            )
         }
     }
 }
