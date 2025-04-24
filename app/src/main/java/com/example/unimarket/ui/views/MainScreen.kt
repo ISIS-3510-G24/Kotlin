@@ -78,8 +78,11 @@ fun MainScreen(
                         bottomItems       = bottomNavItems
                     )
                 }
-                composable("publish") {
+                composable("publishProduct") {
                     PublishProductScreen(navController)
+                }
+                composable("publishFind") {
+                    PublishFindScreen(navController)
                 }
                 composable("wishlist") {
                     WishlistScreen(onBack = { navController.popBackStack() })
