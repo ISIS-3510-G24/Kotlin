@@ -46,9 +46,10 @@ fun MainScreen(
                 modifier = Modifier.padding(innerPadding)
             ) {
                 composable("find_offer") {
-                    FindOfferScreen(onNavigateToProductDetail = { productId ->
-                        rootNavController.navigate("productDetail/$productId")
-                    })
+                    FindOfferScreen(
+                        navController       = rootNavController,
+                        bottomNavController = navController
+                    )
                 }
                 composable("orders") {
                     OrdersScreen(
