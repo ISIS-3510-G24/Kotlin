@@ -7,8 +7,9 @@ import androidx.room.PrimaryKey
 data class OrderEntity(
     @PrimaryKey val orderId: String,
     val buyerId: String,
+    val sellerId: String,
     val productId: String,
     val date: Long,
-    val total: Double,
+    val price: Double,
     val status: String
 )
