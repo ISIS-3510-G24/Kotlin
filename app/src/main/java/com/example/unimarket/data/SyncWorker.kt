@@ -1,4 +1,3 @@
-// src/main/java/com/example/unimarket/data/SyncWorker.kt
 package com.example.unimarket.data
 
 import android.content.Context
