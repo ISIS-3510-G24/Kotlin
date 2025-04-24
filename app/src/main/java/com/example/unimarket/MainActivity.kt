@@ -18,7 +18,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.unimarket.data.PreferencesManager
 import com.example.unimarket.ui.theme.UniMarketTheme
+import com.example.unimarket.ui.viewmodels.FindDetailViewModel
 import com.example.unimarket.ui.viewmodels.ProductDetailViewModel
+import com.example.unimarket.ui.views.FindDetailScreen
 import com.example.unimarket.ui.views.LoginScreen
 import com.example.unimarket.ui.views.MainScreen
 import com.example.unimarket.ui.views.OnboardingScreen
@@ -119,6 +121,7 @@ fun AppNavigation() {
 
         composable("main") {
             MainScreen(rootNavController = navController)
+
         }
 
         composable(
@@ -130,6 +133,17 @@ fun AppNavigation() {
             ProductDetailScreen(
                 navController = navController,
                 viewModel = detailVm
+            )
+        }
+        composable(
+            route = "findDetail/{findId}",
+            arguments = listOf(navArgument("findId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val findDetailVm: FindDetailViewModel =
+                viewModel (viewModelStoreOwner = backStackEntry)
+            FindDetailScreen(
+                navController = navController,
+                viewModel = findDetailVm
             )
         }
     }

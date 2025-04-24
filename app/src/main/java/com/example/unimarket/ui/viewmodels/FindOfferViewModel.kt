@@ -1,15 +1,12 @@
 package com.example.unimarket.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 
-// Modelo de un ítem de "finds"
 data class FindItem(
     val id: String = "",
     val title: String = "",
@@ -20,7 +17,6 @@ data class FindItem(
     val offerCount: Int = 0
 )
 
-// Estado UI que expone el ViewModel
 data class FindOfferUiState(
     val findList: List<FindItem> = emptyList(),
     val userMajor: String = "",
@@ -42,7 +38,6 @@ class FindOfferViewModel : ViewModel() {
         fetchFinds()
     }
 
-    /** Obtiene el major del usuario logueado desde la colección "User" */
     private fun fetchUserMajor() {
         val uid = auth.currentUser?.uid ?: return
         db.collection("User")
@@ -54,7 +49,6 @@ class FindOfferViewModel : ViewModel() {
             }
     }
 
-    /** Carga todos los finds desde Firestore */
     private fun fetchFinds() {
         db.collection("finds")
             .get()
@@ -74,19 +68,16 @@ class FindOfferViewModel : ViewModel() {
             }
     }
 
-    /** Alterna la visibilidad del campo de búsqueda */
     fun onSearchClick() {
         _uiState.value = _uiState.value.copy(
             isSearchVisible = !_uiState.value.isSearchVisible
         )
     }
 
-    /** Actualiza el texto del buscador */
     fun onTextChange(text: String) {
         _uiState.value = _uiState.value.copy(searchText = text)
     }
 
-    /** Limpia y cierra el buscador */
     fun onClearSearch() {
         _uiState.value = _uiState.value.copy(
             searchText = "",

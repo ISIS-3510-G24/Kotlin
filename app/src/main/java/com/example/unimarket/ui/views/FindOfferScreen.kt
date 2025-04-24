@@ -43,6 +43,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.R
 import com.example.unimarket.ui.viewmodels.FindItem
@@ -50,15 +51,16 @@ import com.example.unimarket.ui.viewmodels.FindOfferViewModel
 
 @Composable
 fun FindOfferScreen(
-    onNavigateToProductDetail: (String) -> Unit,
+    navController: NavController,
+    bottomNavController: NavController,
     viewModel: FindOfferViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val items            = uiState.findList
+    val items = uiState.findList
     val currentUserMajor = uiState.userMajor
-    val showBanner       = uiState.showGreetingBanner
-    val isSearching      = uiState.isSearchVisible
-    val searchText       = uiState.searchText
+    val showBanner = uiState.showGreetingBanner
+    val isSearching = uiState.isSearchVisible
+    val searchText = uiState.searchText
 
     Column(
         modifier = Modifier
@@ -69,25 +71,27 @@ fun FindOfferScreen(
     ) {
         TopBarWithSearch(
             isSearchVisible = isSearching,
-            searchText      = searchText,
-            onSearchClick   = viewModel::onSearchClick,
-            onTextChange    = viewModel::onTextChange,
-            onClearSearch   = viewModel::onClearSearch
+            searchText = searchText,
+            onSearchClick = viewModel::onSearchClick,
+            onTextChange = viewModel::onTextChange,
+            onClearSearch = viewModel::onClearSearch
         )
 
         Spacer(Modifier.height(12.dp))
 
         LazyRow(
-            contentPadding        = PaddingValues(horizontal = 16.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(listOf(
-                "ALL REQUESTS", "MATERIALS", "TECHNOLOGY",
-                "SPORTS", "BOOKS", "MUSICAL INSTRUMENTS",
-                "SUITS", "TOYS"
-            )) { cat ->
+            items(
+                listOf(
+                    "ALL REQUESTS", "MATERIALS", "TECHNOLOGY",
+                    "SPORTS", "BOOKS", "MUSICAL INSTRUMENTS",
+                    "SUITS", "TOYS"
+                )
+            ) { cat ->
                 Text(
-                    text  = cat,
+                    text = cat,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onBackground
                 )
@@ -98,20 +102,20 @@ fun FindOfferScreen(
 
         SectionTitle("All")
         SectionRow(
-            items   = items,
-            onClick = onNavigateToProductDetail
+            items = items,
+            onCardClick = { id -> navController.navigate("findDetail/$id") }
         )
 
         SectionTitle("From Your Major")
         SectionColumn(
-            items   = items.filter { it.major == currentUserMajor },
-            onClick = onNavigateToProductDetail
+            items = items.filter { it.major == currentUserMajor },
+            onClick = { id -> navController.navigate("findDetail/$id") }
         )
 
         SectionTitle("Selling out")
         SectionColumn(
-            items   = items.filter { it.status == "active" },
-            onClick = onNavigateToProductDetail
+            items = items.filter { it.status == "active" },
+            onClick = { id -> navController.navigate("findDetail/$id") }
         )
 
         Spacer(Modifier.height(24.dp))
@@ -121,9 +125,9 @@ fun FindOfferScreen(
 @Composable
 private fun SectionTitle(text: String) {
     Text(
-        text     = text,
-        style    = MaterialTheme.typography.titleMedium,
-        color    = MaterialTheme.colorScheme.onBackground,
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.padding(start = 16.dp)
     )
     Spacer(Modifier.height(8.dp))
@@ -132,16 +136,16 @@ private fun SectionTitle(text: String) {
 @Composable
 private fun SectionRow(
     items: List<FindItem>,
-    onClick: (String) -> Unit
+    onCardClick: (String) -> Unit
 ) {
     LazyRow(
-        contentPadding        = PaddingValues(horizontal = 16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(items) { product ->
-            ProductCard(
-                item    = product,
-                onClick = { onClick(product.id) }
+        items(items) { find ->
+            FindCard(
+                item = find,
+                onClick = { onCardClick(find.id) }
             )
         }
     }
@@ -155,12 +159,12 @@ private fun SectionColumn(
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier            = Modifier.padding(horizontal = 16.dp)
+        modifier = Modifier.padding(horizontal = 16.dp)
     ) {
-        items.forEach { product ->
-            HorizontalProductCard(
-                item    = product,
-                onClick = { onClick(product.id) }
+        items.forEach { find ->
+            HorizontalFindCard(
+                item = find,
+                onClick = { onClick(find.id) }
             )
         }
     }
@@ -176,15 +180,15 @@ fun TopBarWithSearch(
     onClearSearch: () -> Unit
 ) {
     Row(
-        modifier              = Modifier
+        modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment     = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Button(
             onClick = { /* TODO: New Find */ },
-            colors  = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             Text("NEW FIND", color = Color.White)
         }
@@ -196,11 +200,11 @@ fun TopBarWithSearch(
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextField(
-                    value         = searchText,
+                    value = searchText,
                     onValueChange = onTextChange,
-                    placeholder   = { Text("Search…") },
-                    singleLine    = true,
-                    modifier      = Modifier
+                    placeholder = { Text("Search…") },
+                    singleLine = true,
+                    modifier = Modifier
                         .width(200.dp)
                         .background(
                             color = MaterialTheme.colorScheme.surfaceVariant,
@@ -216,16 +220,16 @@ fun TopBarWithSearch(
 }
 
 @Composable
-fun ProductCard(
+fun FindCard(
     item: FindItem,
     onClick: () -> Unit
 ) {
     Card(
-        onClick  = onClick,
+        onClick = onClick,
         modifier = Modifier
             .width(260.dp)
             .wrapContentHeight(),
-        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
             val painter =
@@ -233,26 +237,26 @@ fun ProductCard(
                 else painterResource(R.drawable.default_product)
 
             Image(
-                painter           = painter,
-                contentDescription= item.title,
-                modifier          = Modifier
+                painter = painter,
+                contentDescription = item.title,
+                modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp)
                     .clip(MaterialTheme.shapes.small),
-                contentScale      = ContentScale.Crop
+                contentScale = ContentScale.Crop
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text     = item.title,
-                style    = MaterialTheme.typography.bodyMedium,
-                color    = MaterialTheme.colorScheme.onBackground,
+                text = item.title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text     = item.description,
-                style    = MaterialTheme.typography.labelSmall,
-                color    = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                text = item.description,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.height(40.dp)
@@ -260,19 +264,19 @@ fun ProductCard(
             Spacer(Modifier.height(8.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier              = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Button(
-                    onClick  = onClick,
+                    onClick = onClick,
                     modifier = Modifier.weight(1f),
-                    colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text("Find", color = Color.White)
                 }
                 Button(
-                    onClick  = onClick,
+                    onClick = onClick,
                     modifier = Modifier.weight(1f),
-                    colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text("Offer", color = Color.White)
                 }
@@ -282,54 +286,54 @@ fun ProductCard(
 }
 
 @Composable
-fun HorizontalProductCard(
+fun HorizontalFindCard(
     item: FindItem,
     onClick: () -> Unit
 ) {
     Card(
-        onClick  = onClick,
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp),
-        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier          = Modifier.padding(8.dp)
+            modifier = Modifier.padding(8.dp)
         ) {
             val painter =
                 if (item.image.isNotBlank()) rememberAsyncImagePainter(item.image)
                 else painterResource(R.drawable.default_product)
 
             Image(
-                painter           = painter,
-                contentDescription= item.title,
-                modifier          = Modifier
+                painter = painter,
+                contentDescription = item.title,
+                modifier = Modifier
                     .size(60.dp)
                     .clip(MaterialTheme.shapes.small),
-                contentScale      = ContentScale.Crop
+                contentScale = ContentScale.Crop
             )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text     = item.title,
-                    style    = MaterialTheme.typography.bodyMedium,
-                    color    = MaterialTheme.colorScheme.onBackground,
+                    text = item.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text     = item.description,
-                    style    = MaterialTheme.typography.labelSmall,
-                    color    = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    text = item.description,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
             Icon(
-                imageVector        = Icons.Default.KeyboardArrowRight,
+                imageVector = Icons.Default.KeyboardArrowRight,
                 contentDescription = "Go",
-                tint               = MaterialTheme.colorScheme.onBackground
+                tint = MaterialTheme.colorScheme.onBackground
             )
         }
     }
