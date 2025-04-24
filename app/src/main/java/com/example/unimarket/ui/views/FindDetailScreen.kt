@@ -90,7 +90,6 @@ fun FindDetailScreen(
                             .fillMaxSize()
                             .padding(16.dp)
                     ) {
-                        // Imagen o predeterminada si no existe URL
                         if (find.image.isNotEmpty() && find.image[0].isNotBlank()) {
                             Image(
                                 painter = rememberAsyncImagePainter(
@@ -102,7 +101,7 @@ fun FindDetailScreen(
                                 contentDescription = find.title,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(200.dp)
+                                    .height(300.dp)
                                     .clip(RoundedCornerShape(12.dp)),
                                 contentScale = ContentScale.Crop
                             )
@@ -112,7 +111,7 @@ fun FindDetailScreen(
                                 contentDescription = "Default image",
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(200.dp)
+                                    .height(300.dp)
                                     .clip(RoundedCornerShape(12.dp)),
                                 contentScale = ContentScale.Crop
                             )
