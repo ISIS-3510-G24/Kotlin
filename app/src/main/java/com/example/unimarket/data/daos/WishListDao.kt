@@ -17,4 +17,7 @@ interface WishlistDao {
 
     @Delete
     suspend fun delete(item: WishlistEntity)
+
+    @Query("SELECT COUNT(*) FROM wishlist WHERE productId = :productId")
+    suspend fun count(productId: String): Int
 }
