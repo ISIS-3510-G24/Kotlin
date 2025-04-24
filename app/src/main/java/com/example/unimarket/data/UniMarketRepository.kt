@@ -47,8 +47,8 @@ class UniMarketRepository(
                     title = doc.getString("title") ?: "",
                     description = doc.getString("description") ?: "",
                     price = doc.getDouble("price") ?: 0.0,
-                    imageUrls = doc.get("imageUrls") as? List<String> ?: emptyList(),
-                    labels = doc.get("labels") as? List<String> ?: emptyList(),
+                    imageUrls = doc.get("imageUrls") as List<String> ?: emptyList(),
+                    labels = doc.get("labels") as List<String> ?: emptyList(),
                     status = doc.getString("status") ?: "",
                     fetchedAt = now
                 )
@@ -124,4 +124,25 @@ class UniMarketRepository(
         )
     }
 
+    fun getWishlistIds(): Flow<Set<String>> = flow {
+        wishlistDao.getAll().let { list ->
+            emit(list.map { it.productId }.toSet())
+        }
+    }.flowOn(Dispatchers.IO)
+
+    fun getProductById(productId: String, cacheTtlMs: Long): Flow<ProductEntity> = flow {
+        val doc = firestore.collection("Product").document(productId).get().await()
+        val now = System.currentTimeMillis()
+        val entity = ProductEntity(
+            id = doc.id,
+            title = doc.getString("title")!!,
+            description = doc.getString("description")!!,
+            price = doc.getDouble("price")!!,
+            imageUrls = doc.get("imageUrls") as List<String>,
+            labels = doc.get("labels") as List<String>,
+            status = doc.getString("status")!!,
+            fetchedAt = now
+        )
+        emit(entity)
+    }.flowOn(Dispatchers.IO)
 }
