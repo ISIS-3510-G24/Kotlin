@@ -1,7 +1,6 @@
 package com.example.unimarket
 
 import android.annotation.SuppressLint
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,20 +24,12 @@ import com.example.unimarket.ui.views.OnboardingScreen
 import com.example.unimarket.ui.views.PersonalizationScreen
 import com.example.unimarket.ui.views.ProductDetailScreen
 import com.example.unimarket.ui.views.RegisterScreen
-import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.crashlytics.FirebaseCrashlytics
 
 class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        FirebaseAnalytics.getInstance(this).logEvent("app_open", Bundle())
-
-
-        FirebaseCrashlytics.getInstance().setCustomKey("os_version", Build.VERSION.RELEASE)
-        FirebaseCrashlytics.getInstance().setCustomKey("device", "${Build.MANUFACTURER} ${Build.MODEL}")
 
         setContent {
             UniMarketTheme {
@@ -65,8 +56,8 @@ fun AppNavigation() {
     // Set startDestination based on whether onboarding and authentication status
     val startDestination = when {
         !onboardingCompleted -> "onboarding"
-        currentUser == null   -> "login"
-        else                  -> "main"
+        currentUser == null -> "login"
+        else -> "main"
     }
 
     NavHost(navController = navController, startDestination = startDestination)
@@ -126,7 +117,7 @@ fun AppNavigation() {
             arguments = listOf(navArgument("productId") { type = NavType.StringType })
         ) { backStackEntry ->
             val detailVm: ProductDetailViewModel =
-                viewModel (viewModelStoreOwner = backStackEntry)
+                viewModel(viewModelStoreOwner = backStackEntry)
             ProductDetailScreen(
                 navController = navController,
                 viewModel = detailVm
