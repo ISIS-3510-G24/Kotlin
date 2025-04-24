@@ -77,4 +77,5 @@ dependencies {
     implementation (libs.androidx.biometric)
     implementation (libs.gson)
     implementation(libs.androidx.room.runtime)
+    implementation (libs.androidx.work.runtime.ktx)
 }
