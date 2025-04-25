@@ -14,6 +14,7 @@ import com.example.unimarket.data.UniMarketDatabase
 import com.example.unimarket.data.UniMarketRepository
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
+@HiltAndroidApp
 class UniMarketApplication : Application() {
     companion object {
         lateinit var repository: UniMarketRepository
@@ -47,6 +49,7 @@ class UniMarketApplication : Application() {
         try {
             val db = UniMarketDatabase.getInstance(this)
             repository = UniMarketRepository(
+                appContext     = this,
                 productDao    = db.productDao(),
                 wishlistDao   = db.wishlistDao(),
                 orderDao      = db.orderDao(),
