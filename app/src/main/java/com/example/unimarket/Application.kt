@@ -10,9 +10,12 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.unimarket.data.PreferencesManager
 import com.example.unimarket.data.SyncWorker
+import com.example.unimarket.di.IoDispatcher
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import dagger.Provides
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -22,6 +25,8 @@ import java.util.concurrent.TimeUnit
 
 @HiltAndroidApp
 class UniMarketApplication : Application() {
+    @Provides @IoDispatcher
+    fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
 
     override fun onCreate() {
         super.onCreate()
