@@ -25,6 +25,10 @@ class ConnectivityObserver(context: Context) {
         return caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
     }
 
+    fun unregister(context: Context) {
+        connectivityManager.unregisterNetworkCallback(networkCallback)
+    }
+
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             _isOnline.value = true
