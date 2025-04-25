@@ -2,6 +2,7 @@ package com.example.unimarket.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,10 +33,11 @@ class FindOfferViewModel : ViewModel() {
 
     private val auth = FirebaseAuth.getInstance()
     private val db   = Firebase.firestore
+    private var findsListener: ListenerRegistration? = null
 
     init {
         fetchUserMajor()
-        fetchFinds()
+        listenFindsRealtime()
     }
 
     private fun fetchUserMajor() {
@@ -44,15 +46,17 @@ class FindOfferViewModel : ViewModel() {
             .document(uid)
             .get()
             .addOnSuccessListener { doc ->
-                val major = doc.getString("major") ?: ""
+                val major = doc.getString("major")?.uppercase() ?: ""
                 _uiState.value = _uiState.value.copy(userMajor = major)
             }
     }
 
-    private fun fetchFinds() {
-        db.collection("finds")
-            .get()
-            .addOnSuccessListener { snapshot ->
+    private fun listenFindsRealtime() {
+        // Aquí estamos suscribiéndonos a cambios en la colección "finds"
+        findsListener = db.collection("finds")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) return@addSnapshotListener
+
                 val items = snapshot.documents.map { doc ->
                     FindItem(
                         id          = doc.id,
@@ -60,12 +64,18 @@ class FindOfferViewModel : ViewModel() {
                         description = doc.getString("description") ?: "",
                         image       = doc.getString("image") ?: "",
                         status      = doc.getString("status") ?: "",
-                        major       = doc.getString("major") ?: "",
+                        major       = doc.getString("major")?.uppercase() ?: "",
                         offerCount  = doc.getLong("offerCount")?.toInt() ?: 0
                     )
                 }
                 _uiState.value = _uiState.value.copy(findList = items)
             }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // Eliminamos listener para evitar fugas de memoria
+        findsListener?.remove()
     }
 
     fun onSearchClick() {

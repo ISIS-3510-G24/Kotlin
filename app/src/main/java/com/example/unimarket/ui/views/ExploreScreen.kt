@@ -105,7 +105,7 @@ fun ExploreScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(onClick = { bottomNavController.navigate("publish") }) {
+            FloatingActionButton(onClick = { bottomNavController.navigate("publishProduct") }) {
                 Icon(Icons.Default.Add, contentDescription = "Publish Product")
             }
         }

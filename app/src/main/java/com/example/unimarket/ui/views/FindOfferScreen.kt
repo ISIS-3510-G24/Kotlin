@@ -3,6 +3,7 @@ package com.example.unimarket.ui.views
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
@@ -26,6 +28,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +38,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,7 +53,9 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.R
 import com.example.unimarket.ui.viewmodels.FindItem
 import com.example.unimarket.ui.viewmodels.FindOfferViewModel
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FindOfferScreen(
     navController: NavController,
@@ -62,63 +69,138 @@ fun FindOfferScreen(
     val isSearching = uiState.isSearchVisible
     val searchText = uiState.searchText
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
-            .padding(top = if (showBanner) 100.dp else 0.dp)
-    ) {
-        TopBarWithSearch(
-            isSearchVisible = isSearching,
-            searchText = searchText,
-            onSearchClick = viewModel::onSearchClick,
-            onTextChange = viewModel::onTextChange,
-            onClearSearch = viewModel::onClearSearch
-        )
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
 
-        Spacer(Modifier.height(12.dp))
-
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .verticalScroll(scrollState)
+                .padding(top = if (showBanner) 100.dp else 0.dp)
         ) {
-            items(
-                listOf(
-                    "ALL REQUESTS", "MATERIALS", "TECHNOLOGY",
-                    "SPORTS", "BOOKS", "MUSICAL INSTRUMENTS",
-                    "SUITS", "TOYS"
-                )
-            ) { cat ->
-                Text(
-                    text = cat,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onBackground
+            TopBarWithSearch(
+                isSearchVisible = isSearching,
+                searchText = searchText,
+                onSearchClick = viewModel::onSearchClick,
+                onTextChange = viewModel::onTextChange,
+                onClearSearch = viewModel::onClearSearch,
+                onNewFindClick = { bottomNavController.navigate("publishFind") }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(
+                    listOf(
+                        "ALL REQUESTS", "MATERIALS", "TECHNOLOGY",
+                        "SPORTS", "BOOKS", "MUSICAL INSTRUMENTS",
+                        "SUITS", "TOYS"
+                    )
+                ) { cat ->
+                    Text(
+                        text = cat,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            SectionTitle("All")
+            SectionRow(
+                items = items,
+                onCardClick = { id -> navController.navigate("findDetail/$id") }
+            )
+
+            SectionTitle("From Your Major")
+            SectionColumn(
+                items = items.filter { it.major == currentUserMajor },
+                onClick = { id -> navController.navigate("findDetail/$id") }
+            )
+
+            SectionTitle("Selling out")
+            SectionColumn(
+                items = items.filter { it.status == "active" },
+                onClick = { id -> navController.navigate("findDetail/$id") }
+            )
+
+            Spacer(modifier = Modifier.height(80.dp))
+        }
+
+        if (scrollState.value > 0) {
+            FloatingActionButton(
+                onClick = {
+                    coroutineScope.launch {
+                        scrollState.animateScrollTo(0)
+                    }
+                },
+                containerColor = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ArrowUpward,
+                    contentDescription = "Scroll to top",
+                    tint = Color.White
                 )
             }
         }
+    }
+}
 
-        Spacer(Modifier.height(16.dp))
+@Composable
+private fun TopBarWithSearch(
+    isSearchVisible: Boolean,
+    searchText: String,
+    onSearchClick: () -> Unit,
+    onTextChange: (String) -> Unit,
+    onClearSearch: () -> Unit,
+    onNewFindClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Button(
+            onClick = onNewFindClick,
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Text("NEW FIND", color = Color.White)
+        }
 
-        SectionTitle("All")
-        SectionRow(
-            items = items,
-            onCardClick = { id -> navController.navigate("findDetail/$id") }
-        )
-
-        SectionTitle("From Your Major")
-        SectionColumn(
-            items = items.filter { it.major == currentUserMajor },
-            onClick = { id -> navController.navigate("findDetail/$id") }
-        )
-
-        SectionTitle("Selling out")
-        SectionColumn(
-            items = items.filter { it.status == "active" },
-            onClick = { id -> navController.navigate("findDetail/$id") }
-        )
-
-        Spacer(Modifier.height(24.dp))
+        if (!isSearchVisible) {
+            IconButton(onClick = onSearchClick) {
+                Icon(Icons.Filled.Search, contentDescription = "Search")
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextField(
+                    value = searchText,
+                    onValueChange = onTextChange,
+                    placeholder = { Text("Search…") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .width(200.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = MaterialTheme.shapes.small
+                        )
+                )
+                IconButton(onClick = onClearSearch) {
+                    Icon(Icons.Filled.Close, contentDescription = "Clear")
+                }
+            }
+        }
     }
 }
 
@@ -130,7 +212,7 @@ private fun SectionTitle(text: String) {
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.padding(start = 16.dp)
     )
-    Spacer(Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(8.dp))
 }
 
 @Composable
@@ -149,7 +231,7 @@ private fun SectionRow(
             )
         }
     }
-    Spacer(Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(16.dp))
 }
 
 @Composable
@@ -168,55 +250,7 @@ private fun SectionColumn(
             )
         }
     }
-    Spacer(Modifier.height(16.dp))
-}
-
-@Composable
-fun TopBarWithSearch(
-    isSearchVisible: Boolean,
-    searchText: String,
-    onSearchClick: () -> Unit,
-    onTextChange: (String) -> Unit,
-    onClearSearch: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Button(
-            onClick = { /* TODO: New Find */ },
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) {
-            Text("NEW FIND", color = Color.White)
-        }
-
-        if (!isSearchVisible) {
-            IconButton(onClick = onSearchClick) {
-                Icon(Icons.Default.Search, contentDescription = "Search")
-            }
-        } else {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextField(
-                    value = searchText,
-                    onValueChange = onTextChange,
-                    placeholder = { Text("Search…") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .width(200.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = MaterialTheme.shapes.small
-                        )
-                )
-                IconButton(onClick = onClearSearch) {
-                    Icon(Icons.Default.Close, contentDescription = "Clear")
-                }
-            }
-        }
-    }
+    Spacer(modifier = Modifier.height(16.dp))
 }
 
 @Composable
@@ -245,7 +279,7 @@ fun FindCard(
                     .clip(MaterialTheme.shapes.small),
                 contentScale = ContentScale.Crop
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = item.title,
                 style = MaterialTheme.typography.bodyMedium,
@@ -261,21 +295,21 @@ fun FindCard(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.height(40.dp)
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Button(
                     onClick = onClick,
-                    modifier = Modifier.weight(1f),
+                    Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text("Find", color = Color.White)
                 }
                 Button(
                     onClick = onClick,
-                    modifier = Modifier.weight(1f),
+                    Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text("Offer", color = Color.White)
@@ -313,7 +347,7 @@ fun HorizontalFindCard(
                     .clip(MaterialTheme.shapes.small),
                 contentScale = ContentScale.Crop
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.title,
@@ -331,7 +365,7 @@ fun HorizontalFindCard(
                 )
             }
             Icon(
-                imageVector = Icons.Default.KeyboardArrowRight,
+                imageVector = Icons.Filled.KeyboardArrowRight,
                 contentDescription = "Go",
                 tint = MaterialTheme.colorScheme.onBackground
             )
