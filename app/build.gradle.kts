@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics") version "3.0.3"
+    id("com.google.dagger.hilt.android")
+    id("org.jetbrains.kotlin.kapt")
 }
 
 android {
@@ -78,4 +80,8 @@ dependencies {
     implementation (libs.gson)
     implementation(libs.androidx.room.runtime)
     implementation (libs.androidx.work.runtime.ktx)
+    implementation (libs.hilt.android)
+    kapt           (libs.hilt.compiler)
+    implementation (libs.androidx.hilt.work)
+    kapt           (libs.androidx.hilt.hilt.compiler)
 }
