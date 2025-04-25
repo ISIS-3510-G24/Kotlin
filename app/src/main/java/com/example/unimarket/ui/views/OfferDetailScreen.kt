@@ -1,3 +1,4 @@
+// OfferDetailScreen.kt
 package com.example.unimarket.ui.views
 
 import androidx.compose.foundation.Image
@@ -16,6 +17,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -40,17 +43,17 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.unimarket.R
-import com.example.unimarket.ui.viewmodels.FindDetailViewModel
+import com.example.unimarket.ui.viewmodels.OfferDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FindDetailScreen(
+fun OfferDetailScreen(
     navController: NavController,
-    viewModel: FindDetailViewModel = viewModel()
+    viewModel: OfferDetailViewModel = viewModel()
 ) {
     val findDetail by viewModel.findDetail.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val isLoading  by viewModel.isLoading.collectAsState()
+    val error      by viewModel.error.collectAsState()
 
     Scaffold(
         topBar = {
@@ -90,6 +93,7 @@ fun FindDetailScreen(
                             .fillMaxSize()
                             .padding(16.dp)
                     ) {
+                        // Imagen o placeholder
                         if (find.image.isNotEmpty() && find.image[0].isNotBlank()) {
                             Image(
                                 painter = rememberAsyncImagePainter(
@@ -118,6 +122,7 @@ fun FindDetailScreen(
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
+
                         Text(find.title, style = MaterialTheme.typography.headlineSmall)
                         Spacer(modifier = Modifier.height(8.dp))
 
@@ -137,6 +142,25 @@ fun FindDetailScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         Text("Description:", fontWeight = FontWeight.Bold)
                         Text(find.description)
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // --- Botón ovalado que navega a la pantalla de publicar producto ---
+                        Button(
+                            onClick = { navController.navigate("publishProduct") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            Text(
+                                text = "Offer this product",
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
                     }
                 }
             }
