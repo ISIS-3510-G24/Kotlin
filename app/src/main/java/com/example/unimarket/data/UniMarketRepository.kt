@@ -1,5 +1,7 @@
 package com.example.unimarket.data
 
+import android.content.Context
+import androidx.collection.LruCache
 import com.example.unimarket.data.daos.ImageCacheDao
 import com.example.unimarket.data.daos.OrderDao
 import com.example.unimarket.data.daos.PendingOpDao
@@ -16,8 +18,10 @@ import com.google.firebase.firestore.firestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.storage
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.tasks.await
@@ -25,6 +29,7 @@ import kotlinx.coroutines.withContext
 import java.util.Date
 
 class UniMarketRepository(
+    private val appContext: Context,
     private val productDao: ProductDao,
     private val wishlistDao: WishlistDao,
     private val orderDao: OrderDao,
@@ -36,24 +41,38 @@ class UniMarketRepository(
 ) {
     fun getProducts(cacheTtlMs: Long): Flow<List<ProductEntity>> = flow {
         val now = System.currentTimeMillis()
+
+        val roomList = productDao.getAll()
+        if (roomList.isEmpty()) {
+            FileCacheManager.readCache(appContext)?.let { json ->
+                val backup: List<ProductEntity> = gson.fromJson(
+                    json,
+                    object : TypeToken<List<ProductEntity>>() {}.type
+                )
+                emit(backup)
+            }
+        }
+
         val cached = productDao.getAll()
-        if (cached.isNotEmpty() && now - (cached.minOf { it.fetchedAt }) < cacheTtlMs) {
+        val oldestFetch = cached.minOfOrNull { it.fetchedAt } ?: 0L
+        if (cached.isNotEmpty() && now - oldestFetch < cacheTtlMs) {
             emit(cached)
         } else {
             val snapshot = firestore.collection("Product").get().await()
             val fresh = snapshot.documents.map { doc ->
                 ProductEntity(
-                    id = doc.id,
-                    title = doc.getString("title") ?: "",
+                    id          = doc.id,
+                    title       = doc.getString("title") ?: "",
                     description = doc.getString("description") ?: "",
-                    price = doc.getDouble("price") ?: 0.0,
-                    imageUrls = doc.get("imageUrls") as List<String> ?: emptyList(),
-                    labels = doc.get("labels") as List<String> ?: emptyList(),
-                    status = doc.getString("status") ?: "",
-                    fetchedAt = now
+                    price       = doc.getDouble("price") ?: 0.0,
+                    imageUrls   = doc.get("imageUrls") as? List<String> ?: emptyList(),
+                    labels      = doc.get("labels")    as? List<String> ?: emptyList(),
+                    status      = doc.getString("status") ?: "",
+                    fetchedAt   = now
                 )
             }
             productDao.insertAll(fresh)
+            FileCacheManager.writeCache(appContext, gson.toJson(fresh))
             emit(fresh)
         }
     }.flowOn(Dispatchers.IO)
@@ -108,11 +127,13 @@ class UniMarketRepository(
     }
 
     suspend fun uploadImage(localUri: String, remotePath: String) = withContext(Dispatchers.IO) {
-        imageCacheDao.insert(ImageCacheEntity(
-            localUri = localUri,
-            remotePath = remotePath,
-            state = "PENDING"
-        ))
+        imageCacheDao.insert(
+            ImageCacheEntity(
+                localUri = localUri,
+                remotePath = remotePath,
+                state = "PENDING"
+            )
+        )
 
         val payload = UploadImagePayload(localUri, remotePath)
         pendingOpDao.insert(
@@ -130,19 +151,34 @@ class UniMarketRepository(
         }
     }.flowOn(Dispatchers.IO)
 
+    private val productCache = object : LruCache<String, ProductEntity>(100) {
+        override fun sizeOf(key: String, value: ProductEntity) = 1
+    }
+
+    fun getProudctByUdCached(productId: String, cacheTtlMs: Long): Flow<ProductEntity> = flow {
+        productCache[productId]?.let {
+            emit(it)
+        } ?: run {
+            val entity = getProductById(productId, cacheTtlMs).first()
+            productCache.put(productId, entity)
+            emit(entity)
+        }
+    }.flowOn(Dispatchers.IO)
+
     fun getProductById(productId: String, cacheTtlMs: Long): Flow<ProductEntity> = flow {
         val doc = firestore.collection("Product").document(productId).get().await()
         val now = System.currentTimeMillis()
-        val entity = ProductEntity(
-            id = doc.id,
-            title = doc.getString("title")!!,
-            description = doc.getString("description")!!,
-            price = doc.getDouble("price")!!,
-            imageUrls = doc.get("imageUrls") as List<String>,
-            labels = doc.get("labels") as List<String>,
-            status = doc.getString("status")!!,
-            fetchedAt = now
+        emit(
+            ProductEntity(
+                id = doc.id,
+                title = doc.getString("title")!!,
+                description = doc.getString("description")!!,
+                price = doc.getDouble("price")!!,
+                imageUrls = doc.get("imageUrls") as? List<String> ?: emptyList(),
+                labels = doc.get("labels") as? List<String> ?: emptyList(),
+                status = doc.getString("status")!!,
+                fetchedAt = now
+            )
         )
-        emit(entity)
     }.flowOn(Dispatchers.IO)
 }

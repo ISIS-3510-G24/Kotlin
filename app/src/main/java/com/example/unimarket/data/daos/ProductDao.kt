@@ -16,4 +16,11 @@ interface ProductDao {
 
     @Query("DELETE FROM products")
     suspend fun clear()
+
+    @Query("SELECT * FROM products WHERE id = :id")
+    suspend fun getById(id: String): ProductEntity?
+
+    @Query("UPDATE products SET status = :status WHERE id = :id")
+    suspend fun updateStatus(id: String, status: String)
+
 }
