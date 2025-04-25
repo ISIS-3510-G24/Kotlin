@@ -1,3 +1,4 @@
+// FindOfferScreen.kt
 package com.example.unimarket.ui.views
 
 import androidx.compose.foundation.Image
@@ -62,19 +63,19 @@ fun FindOfferScreen(
     bottomNavController: NavController,
     viewModel: FindOfferViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val items = uiState.findList
-    val currentUserMajor = uiState.userMajor
-    val showBanner = uiState.showGreetingBanner
-    val isSearching = uiState.isSearchVisible
-    val searchText = uiState.searchText
+    val uiState        by viewModel.uiState.collectAsState()
+    val items          = uiState.findList
+    val currentMajor   = uiState.userMajor
+    val showBanner     = uiState.showGreetingBanner
+    val isSearching    = uiState.isSearchVisible
+    val searchText     = uiState.searchText
 
-    val scrollState = rememberScrollState()
+    val scrollState    = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier
+            Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .verticalScroll(scrollState)
@@ -82,71 +83,66 @@ fun FindOfferScreen(
         ) {
             TopBarWithSearch(
                 isSearchVisible = isSearching,
-                searchText = searchText,
-                onSearchClick = viewModel::onSearchClick,
-                onTextChange = viewModel::onTextChange,
-                onClearSearch = viewModel::onClearSearch,
-                onNewFindClick = { bottomNavController.navigate("publishFind") }
+                searchText      = searchText,
+                onSearchClick   = viewModel::onSearchClick,
+                onTextChange    = viewModel::onTextChange,
+                onClearSearch   = viewModel::onClearSearch,
+                onNewFindClick  = { bottomNavController.navigate("publishFind") }
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
             LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
+                contentPadding       = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(
-                    listOf(
-                        "ALL REQUESTS", "MATERIALS", "TECHNOLOGY",
-                        "SPORTS", "BOOKS", "MUSICAL INSTRUMENTS",
-                        "SUITS", "TOYS"
-                    )
-                ) { cat ->
+                items(listOf(
+                    "ALL REQUESTS","MATERIALS","TECHNOLOGY",
+                    "SPORTS","BOOKS","MUSICAL INSTRUMENTS",
+                    "SUITS","TOYS"
+                )) { cat ->
                     Text(
-                        text = cat,
+                        text  = cat,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onBackground
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
             SectionTitle("All")
             SectionRow(
-                items = items,
-                onCardClick = { id -> navController.navigate("findDetail/$id") }
+                items        = items,
+                onFindClick  = { id -> navController.navigate("findDetail/$id") },
+                onOfferClick = { id -> navController.navigate("offerDetail/$id") }
             )
 
             SectionTitle("From Your Major")
             SectionColumn(
-                items = items.filter { it.major == currentUserMajor },
-                onClick = { id -> navController.navigate("findDetail/$id") }
+                items   = items.filter { it.major == currentMajor },
+                onClick = { id -> navController.navigate("offerDetail/$id") }
             )
 
             SectionTitle("Selling out")
             SectionColumn(
-                items = items.filter { it.status == "active" },
+                items   = items.filter { it.status == "active" },
                 onClick = { id -> navController.navigate("findDetail/$id") }
             )
 
-            Spacer(modifier = Modifier.height(80.dp))
+            Spacer(Modifier.height(80.dp))
         }
 
         if (scrollState.value > 0) {
             FloatingActionButton(
-                onClick = {
-                    coroutineScope.launch {
-                        scrollState.animateScrollTo(0)
-                    }
-                },
+                onClick        = { coroutineScope.launch { scrollState.animateScrollTo(0) } },
                 containerColor = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
+                modifier       = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(16.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Filled.ArrowUpward,
+                    Icons.Filled.ArrowUpward,
                     contentDescription = "Scroll to top",
                     tint = Color.White
                 )
@@ -158,22 +154,22 @@ fun FindOfferScreen(
 @Composable
 private fun TopBarWithSearch(
     isSearchVisible: Boolean,
-    searchText: String,
-    onSearchClick: () -> Unit,
-    onTextChange: (String) -> Unit,
-    onClearSearch: () -> Unit,
-    onNewFindClick: () -> Unit
+    searchText:      String,
+    onSearchClick:   () -> Unit,
+    onTextChange:    (String) -> Unit,
+    onClearSearch:   () -> Unit,
+    onNewFindClick:  () -> Unit
 ) {
     Row(
-        modifier = Modifier
+        Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment    = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Button(
             onClick = onNewFindClick,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            colors  = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             Text("NEW FIND", color = Color.White)
         }
@@ -185,11 +181,11 @@ private fun TopBarWithSearch(
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextField(
-                    value = searchText,
+                    value         = searchText,
                     onValueChange = onTextChange,
-                    placeholder = { Text("Search…") },
-                    singleLine = true,
-                    modifier = Modifier
+                    placeholder   = { Text("Search…") },
+                    singleLine    = true,
+                    modifier      = Modifier
                         .width(200.dp)
                         .background(
                             color = MaterialTheme.colorScheme.surfaceVariant,
@@ -207,110 +203,95 @@ private fun TopBarWithSearch(
 @Composable
 private fun SectionTitle(text: String) {
     Text(
-        text = text,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onBackground,
+        text     = text,
+        style    = MaterialTheme.typography.titleMedium,
+        color    = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.padding(start = 16.dp)
     )
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(Modifier.height(8.dp))
 }
 
 @Composable
 private fun SectionRow(
     items: List<FindItem>,
-    onCardClick: (String) -> Unit
+    onFindClick:  (String) -> Unit,
+    onOfferClick: (String) -> Unit
 ) {
     LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp),
+        contentPadding       = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(items) { find ->
             FindCard(
-                item = find,
-                onClick = { onCardClick(find.id) }
+                item         = find,
+                onFindClick  = { onFindClick(find.id) },
+                onOfferClick = { onOfferClick(find.id) }
             )
         }
     }
-    Spacer(modifier = Modifier.height(16.dp))
-}
-
-@Composable
-private fun SectionColumn(
-    items: List<FindItem>,
-    onClick: (String) -> Unit
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(horizontal = 16.dp)
-    ) {
-        items.forEach { find ->
-            HorizontalFindCard(
-                item = find,
-                onClick = { onClick(find.id) }
-            )
-        }
-    }
-    Spacer(modifier = Modifier.height(16.dp))
+    Spacer(Modifier.height(16.dp))
 }
 
 @Composable
 fun FindCard(
     item: FindItem,
-    onClick: () -> Unit
+    onFindClick:  () -> Unit,
+    onOfferClick: () -> Unit
 ) {
     Card(
-        onClick = onClick,
+        onClick = onFindClick,
         modifier = Modifier
             .width(260.dp)
             .wrapContentHeight(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(modifier = Modifier.padding(8.dp)) {
+        Column(Modifier.padding(8.dp)) {
             val painter =
-                if (item.image.isNotBlank()) rememberAsyncImagePainter(item.image)
+                if (item.image.isNotBlank())
+                    rememberAsyncImagePainter(item.image)
                 else painterResource(R.drawable.default_product)
 
             Image(
-                painter = painter,
-                contentDescription = item.title,
-                modifier = Modifier
+                painter             = painter,
+                contentDescription  = item.title,
+                modifier            = Modifier
                     .fillMaxWidth()
                     .height(160.dp)
                     .clip(MaterialTheme.shapes.small),
-                contentScale = ContentScale.Crop
+                contentScale        = ContentScale.Crop
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
-                text = item.title,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                text      = item.title,
+                style     = MaterialTheme.typography.bodyMedium,
+                color     = MaterialTheme.colorScheme.onBackground,
+                maxLines  = 1,
+                overflow  = TextOverflow.Ellipsis
             )
             Text(
-                text = item.description,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.height(40.dp)
+                text      = item.description,
+                style     = MaterialTheme.typography.labelSmall,
+                color     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                maxLines  = 2,
+                overflow  = TextOverflow.Ellipsis,
+                modifier  = Modifier.height(40.dp)
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier              = Modifier.fillMaxWidth()
             ) {
                 Button(
-                    onClick = onClick,
+                    onClick = onFindClick,
                     Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    colors  = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text("Find", color = Color.White)
                 }
                 Button(
-                    onClick = onClick,
+                    onClick = onOfferClick,
                     Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    colors  = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text("Offer", color = Color.White)
                 }
@@ -320,52 +301,72 @@ fun FindCard(
 }
 
 @Composable
+fun SectionColumn(
+    items: List<FindItem>,
+    onClick: (String) -> Unit
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier            = Modifier.padding(horizontal = 16.dp)
+    ) {
+        items.forEach { find ->
+            HorizontalFindCard(
+                item    = find,
+                onClick = { onClick(find.id) }
+            )
+        }
+    }
+    Spacer(Modifier.height(16.dp))
+}
+
+@Composable
 fun HorizontalFindCard(
     item: FindItem,
     onClick: () -> Unit
 ) {
     Card(
-        onClick = onClick,
+        onClick  = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(8.dp)
+            modifier          = Modifier.padding(8.dp)
         ) {
             val painter =
-                if (item.image.isNotBlank()) rememberAsyncImagePainter(item.image)
+                if (item.image.isNotBlank())
+                    rememberAsyncImagePainter(item.image)
                 else painterResource(R.drawable.default_product)
 
             Image(
-                painter = painter,
-                contentDescription = item.title,
-                modifier = Modifier
+                painter             = painter,
+                contentDescription  = item.title,
+                modifier            = Modifier
                     .size(60.dp)
                     .clip(MaterialTheme.shapes.small),
-                contentScale = ContentScale.Crop
+                contentScale        = ContentScale.Crop
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    text      = item.title,
+                    style     = MaterialTheme.typography.bodyMedium,
+                    color     = MaterialTheme.colorScheme.onBackground,
+                    maxLines  = 1,
+                    overflow  = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = item.description,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    text      = item.description,
+                    style     = MaterialTheme.typography.labelSmall,
+                    color     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    maxLines  = 1,
+                    overflow  = TextOverflow.Ellipsis
                 )
             }
             Icon(
-                imageVector = Icons.Filled.KeyboardArrowRight,
+                Icons.Filled.KeyboardArrowRight,
                 contentDescription = "Go",
                 tint = MaterialTheme.colorScheme.onBackground
             )
