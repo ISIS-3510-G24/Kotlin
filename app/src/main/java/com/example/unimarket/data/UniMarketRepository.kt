@@ -155,7 +155,7 @@ class UniMarketRepository(
         override fun sizeOf(key: String, value: ProductEntity) = 1
     }
 
-    fun getProudctByUdCached(productId: String, cacheTtlMs: Long): Flow<ProductEntity> = flow {
+    fun getProductByIdCached(productId: String, cacheTtlMs: Long): Flow<ProductEntity> = flow {
         productCache[productId]?.let {
             emit(it)
         } ?: run {
