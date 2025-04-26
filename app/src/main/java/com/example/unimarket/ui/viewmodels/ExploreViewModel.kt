@@ -105,6 +105,11 @@ class ExploreViewModel @Inject constructor(
                                     "SUCCESS" -> _uploadState.value = ImageUploadState.Success(entry.downloadUrl!!)
                                     "FAILED"  -> _uploadState.value = ImageUploadState.Failed(entry.localUri)
                                 }
+
+                                viewModelScope.launch(ioDispatcher) {
+                                    repo.clearImageCacheEntry(entry)
+                                }
+
                                 uploadingRemotePath = null
                             }
                     }
