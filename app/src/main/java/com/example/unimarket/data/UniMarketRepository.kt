@@ -151,7 +151,9 @@ class UniMarketRepository(
         }
     }.flowOn(Dispatchers.IO)
 
-    private val productCache = object : LruCache<String, ProductEntity>(100) {
+    val maxKb = (Runtime.getRuntime().maxMemory() / 1024).toInt()
+    val cacheSize = maxKb / 8
+    private val productCache = object : LruCache<String, ProductEntity>(cacheSize) {
         override fun sizeOf(key: String, value: ProductEntity) = 1
     }
 
