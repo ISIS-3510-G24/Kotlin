@@ -88,5 +88,8 @@ dependencies {
     kapt           (libs.androidx.hilt.hilt.compiler)
     implementation("androidx.datastore:datastore-preferences:1.1.4")
     implementation (libs.androidx.hilt.navigation.compose)
+    implementation (libs.androidx.material)
+
+
 
 }

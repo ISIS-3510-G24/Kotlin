@@ -1,6 +1,8 @@
 package com.example.unimarket.data
 
 import android.content.Context
+import android.net.Uri
+import android.util.Log
 import androidx.collection.LruCache
 import com.example.unimarket.data.daos.ImageCacheDao
 import com.example.unimarket.data.daos.OrderDao
@@ -48,7 +50,6 @@ class UniMarketRepository(
     @OptIn(ExperimentalCoroutinesApi::class)
     fun getProducts(cacheTtlMs: Long): Flow<List<ProductEntity>> =
         productDao.observeAll()
-            .flowOn(ioDispatcher)
             .flatMapLatest { cached ->
                 flow {
                     val now = System.currentTimeMillis()
@@ -64,25 +65,24 @@ class UniMarketRepository(
                     if (cached.isNotEmpty() && now - oldest < cacheTtlMs) {
                         emit(cached)
                     } else {
-                        val snapshot = firestore.collection("Product").get().await()
-                        val fresh = snapshot.documents.map { doc ->
+                        val snap = firestore.collection("Product").get().await()
+                        val fresh = snap.documents.map { d ->
                             ProductEntity(
-                                id          = doc.id,
-                                title       = doc.getString("title")    ?: "",
-                                description = doc.getString("description") ?: "",
-                                price       = doc.getDouble("price")    ?: 0.0,
-                                imageUrls   = doc.get("imageUrls") as? List<String> ?: emptyList(),
-                                labels      = doc.get("labels")    as? List<String> ?: emptyList(),
-                                status      = doc.getString("status") ?: "",
+                                id          = d.id,
+                                title       = d.getString("title")    ?: "",
+                                description = d.getString("description") ?: "",
+                                price       = d.getDouble("price")    ?: 0.0,
+                                imageUrls   = d.get("imageUrls") as? List<String> ?: emptyList(),
+                                labels      = d.get("labels")    as? List<String> ?: emptyList(),
+                                status      = d.getString("status") ?: "",
                                 fetchedAt   = now
                             )
                         }
                         productDao.insertAll(fresh)
-                        FileCacheManager.writeCache(appContext, gson.toJson(fresh))
                         emit(fresh)
                     }
                 }.flowOn(ioDispatcher)
-            }
+            }.flowOn(ioDispatcher)
 
     suspend fun toggleWishlist(userId: String, productId: String) = withContext(Dispatchers.IO) {
         // Check if the product is already in the wishlist
@@ -133,7 +133,7 @@ class UniMarketRepository(
         orderDao.insert(order)
     }
 
-    suspend fun uploadImage(localUri: String, remotePath: String) = withContext(Dispatchers.IO) {
+    suspend fun uploadImage(localUri: String, remotePath: String) = withContext(ioDispatcher) {
         imageCacheDao.insert(
             ImageCacheEntity(
                 localUri = localUri,
@@ -141,20 +141,18 @@ class UniMarketRepository(
                 state = "PENDING"
             )
         )
-
-        val payload = UploadImagePayload(localUri, remotePath)
-        pendingOpDao.insert(
-            PendingOpEntity(
-                type = "UPLOAD_IMAGE",
-                payload = gson.toJson(payload),
-                createdAt = Date().time
-            )
-        )
+        val ref = storage.reference.child(remotePath)
+        Log.d("Repo", "putFile localUri=$localUri remPath=$remotePath")
+        try {
+            ref.putFile(Uri.parse(localUri)).await()
+            val downloadUrl = ref.downloadUrl.await().toString()
+            imageCacheDao.updateEntry(localUri, remotePath, "SUCCESS", downloadUrl)
+        } catch (e: Exception) {
+            imageCacheDao.updateEntry(localUri, remotePath, "FAILED", null)
+        }
     }
 
-    fun observeImageCacheEntries(): Flow<List<ImageCacheEntity>> =
-        imageCacheDao.observeAll()
-            .flowOn(ioDispatcher)
+    fun observeImageCacheEntries() = imageCacheDao.observeAll().flowOn(ioDispatcher)
 
     fun getWishlistIds(): Flow<Set<String>> =
         wishlistDao.observeAll()
@@ -197,4 +195,8 @@ class UniMarketRepository(
     fun observeOrders(): Flow<List<OrderEntity>> =
         orderDao.observeAll()
             .flowOn(ioDispatcher)
+
+    suspend fun clearImageCacheEntry(entry: ImageCacheEntity) = with(ioDispatcher) {
+        imageCacheDao.delete(entry)
+    }
 }

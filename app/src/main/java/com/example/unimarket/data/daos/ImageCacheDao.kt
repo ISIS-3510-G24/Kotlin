@@ -5,7 +5,6 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Update
 import com.example.unimarket.data.entities.ImageCacheEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -17,8 +16,18 @@ interface ImageCacheDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(item: ImageCacheEntity)
 
-    @Update
-    suspend fun update(item: ImageCacheEntity)
+    @Query("""
+    UPDATE image_cache
+      SET state = :state,
+          downloadUrl = :downloadUrl
+    WHERE localUri = :localUri AND remotePath = :remotePath
+  """)
+    suspend fun updateEntry(
+        localUri: String,
+        remotePath: String,
+        state: String,
+        downloadUrl: String?
+    )
 
     @Delete
     suspend fun delete(item: ImageCacheEntity)

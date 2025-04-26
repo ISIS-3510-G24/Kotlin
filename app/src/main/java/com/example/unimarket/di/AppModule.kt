@@ -1,6 +1,7 @@
 package com.example.unimarket.di
 
 import android.content.Context
+import androidx.room.Room
 import androidx.work.WorkManager
 import com.example.unimarket.data.UniMarketDatabase
 import com.example.unimarket.data.UniMarketRepository
@@ -31,7 +32,9 @@ import javax.inject.Singleton
 object AppModule {
     @Provides @Singleton
     fun providedDatabase(@ApplicationContext c: Context): UniMarketDatabase =
-        UniMarketDatabase.getInstance(c)
+        Room.databaseBuilder(c, UniMarketDatabase::class.java, "unimarket.db")
+            .fallbackToDestructiveMigration()
+            .build()
 
     @Provides fun provideProductDao(db: UniMarketDatabase) = db.productDao()
     @Provides fun provideWishlistDao(db: UniMarketDatabase) = db.wishlistDao()

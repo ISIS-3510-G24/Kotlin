@@ -25,6 +25,7 @@ datastore = "1.1.5"
 firestore = "25.1.4"
 coil = "2.3.0"
 firebase-analytics-ktx = "22.4.0"
+material = "1.8.0"
 materialIconsExtended = "1.7.8"
 navigationCompose = "2.8.9"
 roomRuntime = "2.7.1"
@@ -47,6 +48,7 @@ androidx-datastore-preferences = { module = "androidx.datastore:datastore-prefer
 androidx-hilt-hilt-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "hiltCompilerVersion" }
 androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltCompilerVersion" }
 androidx-hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "hiltWork" }
+androidx-material = { module = "androidx.compose.material:material", version.ref = "material" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }

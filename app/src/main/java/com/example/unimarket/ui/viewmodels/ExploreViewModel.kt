@@ -2,6 +2,7 @@ package com.example.unimarket.ui.viewmodels
 
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import androidx.core.os.bundleOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,6 +19,7 @@ import com.google.firebase.perf.metrics.Trace
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +31,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 // This ViewModel loads products from Firestore and handles errors
@@ -47,6 +50,7 @@ class ExploreViewModel @Inject constructor(
         private const val DEFAULT_CACHE_TTL_MS = 3_600_000L
     }
 
+    private var uploadingRemotePath: String? = null
     private var loadTrace: Trace? = null
 
     private val _products = MutableStateFlow<List<Product>>(emptyList())
@@ -64,6 +68,7 @@ class ExploreViewModel @Inject constructor(
 
     sealed class UIEvent {
         data class ShowMessage(val message: String) : UIEvent()
+        object ProductPublished : UIEvent()
     }
 
     private val _uiEvent = MutableSharedFlow<UIEvent>(extraBufferCapacity = 1)
@@ -88,6 +93,23 @@ class ExploreViewModel @Inject constructor(
         observeWishlist()
         loadUserPreferences()
         loadProducts()
+        viewModelScope.launch(ioDispatcher) {
+            repo.observeImageCacheEntries()
+                .filter { entries -> entries.any { it.state != "PENDING" } }
+                .collect { entries ->
+                    uploadingRemotePath?.let { path ->
+                        entries
+                            .find { it.remotePath == path && it.state != "PENDING" }
+                            ?.let { entry ->
+                                when (entry.state) {
+                                    "SUCCESS" -> _uploadState.value = ImageUploadState.Success(entry.downloadUrl!!)
+                                    "FAILED"  -> _uploadState.value = ImageUploadState.Failed(entry.localUri)
+                                }
+                                uploadingRemotePath = null
+                            }
+                    }
+                }
+        }
     }
 
     private fun observeWishlist() {
@@ -149,7 +171,6 @@ class ExploreViewModel @Inject constructor(
                 .collect { entities ->
                     _products.value = entities.map { ent ->
                         Product(
-                            id = ent.id,
                             title = ent.title,
                             description = ent.description,
                             imageUrls = ent.imageUrls,
@@ -182,21 +203,19 @@ class ExploreViewModel @Inject constructor(
         }
     }
 
-    fun publishProduct(
-        product: Product,
-        onSuccess: () -> Unit,
-        onFailure: (String) -> Unit,
-    ) {
+    fun publishProduct(product: Product) {
         viewModelScope.launch(ioDispatcher + handler) {
-            _uiEvent.emit(UIEvent.ShowMessage("Publishing product..."))
+            _uiEvent.emit(UIEvent.ShowMessage("Publishing product…"))
             try {
                 firestore.collection("Product").add(product).await()
                 _uiEvent.emit(UIEvent.ShowMessage("Product published successfully"))
-                onSuccess()
+                withContext(Dispatchers.Main) {
+                    _uiEvent.emit(UIEvent.ProductPublished)
+                    resetUploadState()
+                }
             } catch (e: Exception) {
                 crashlytics.recordException(e)
                 _uiEvent.emit(UIEvent.ShowMessage("Failed to publish product: ${e.message}"))
-                onFailure(e.message ?: "Unknown error")
             }
         }
     }
@@ -207,31 +226,36 @@ class ExploreViewModel @Inject constructor(
         loadProducts()
     }
 
+    private fun observeImageCache() {
+        viewModelScope.launch(ioDispatcher + handler) {
+            repo.observeImageCacheEntries()
+                .filter { list -> list.any { it.state != "PENDING" } }
+                .collect { list ->
+                    list.find { it.state != "PENDING" }?.let { entry ->
+                        when (entry.state) {
+                            "SUCCESS" -> _uploadState.value = ImageUploadState.Success(entry.downloadUrl!!)
+                            "FAILED"  -> _uploadState.value = ImageUploadState.Failed(entry.localUri)
+                        }
+                    }
+                }
+        }
+    }
+
+    fun resetUploadState() {
+        _uploadState.value = ImageUploadState.Idle
+    }
+
+
     fun uploadProductImage(uri: Uri) {
         val userId = auth.currentUser?.uid ?: return
         val path = "product_images/$userId/${System.currentTimeMillis()}.jpg"
 
-        // Log image upload event
+        uploadingRemotePath = path
+
+        Log.d("Publish", "uploadProductImage → uri=$uri, path=$path")
+        _uploadState.value = ImageUploadState.Pending(uri.toString(), path)
         viewModelScope.launch(ioDispatcher + handler) {
             repo.uploadImage(uri.toString(), path)
-            _uploadState.value = ImageUploadState.Pending(uri.toString(), path)
-        }
-
-        // Observe the image cache entries to update the upload state
-        viewModelScope.launch(ioDispatcher + handler) {
-            repo.observeImageCacheEntries()
-                .filter { list -> list.any { it.localUri == uri.toString() && it.remotePath == path } }
-                .collect { list ->
-                    list.find { it.localUri == uri.toString() && it.remotePath == path }
-                        ?.let { entry ->
-                            when (entry.state) {
-                                "SUCCESS" -> _uploadState.value = ImageUploadState.Success(path)
-                                "FAILED" -> _uploadState.value = ImageUploadState.Failed(path)
-                                else -> { /* still pending */
-                                }
-                            }
-                        }
-                }
         }
     }
 
