@@ -7,11 +7,12 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.unimarket.data.entities.ImageCacheEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ImageCacheDao {
     @Query("SELECT * FROM image_cache")
-    suspend fun getAll(): List<ImageCacheEntity>
+    fun observeAll(): Flow<List<ImageCacheEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(item: ImageCacheEntity)

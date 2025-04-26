@@ -1,3 +1,4 @@
+// SyncWorker.kt
 package com.example.unimarket.data
 
 import android.content.Context
@@ -9,6 +10,7 @@ import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
 import com.google.gson.Gson
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.tasks.await
 
 class SyncWorker(
@@ -17,43 +19,56 @@ class SyncWorker(
 ) : CoroutineWorker(appContext, workerParams) {
 
     // DAOs
-    private val pendingDao   = UniMarketDatabase.getInstance(appContext).pendingOpDao()
-    private val imageDao     = UniMarketDatabase.getInstance(appContext).imageCacheDao()
+    private val pendingDao = UniMarketDatabase
+        .getInstance(appContext)
+        .pendingOpDao()
+    private val imageDao = UniMarketDatabase
+        .getInstance(appContext)
+        .imageCacheDao()
 
     // Firebase
     private val firestore = Firebase.firestore
-    private val storage   = Firebase.storage
+    private val storage = Firebase.storage
 
     // JSON serializer
     private val gson = Gson()
 
     override suspend fun doWork(): Result {
         val ops = pendingDao.getAll()
-        try {
-            for (op in ops) {
-                when (op.type) {
-                    "WISHLIST" -> {
+        for (op in ops) {
+            when (op.type) {
+                "WISHLIST" -> {
+                    try {
                         val p = gson.fromJson(op.payload, WishlistOpPayload::class.java)
                         val doc = firestore.collection("User")
                             .document(p.userId)
                             .collection("wishlist")
                             .document(p.productId)
-                        if (p.add) {
-                            doc.set(mapOf("addedAt" to FieldValue.serverTimestamp())).await()
-                        } else {
-                            doc.delete().await()
-                        }
-                    }
+                        if (p.add) doc.set(mapOf("addedAt" to FieldValue.serverTimestamp())).await()
+                        else doc.delete().await()
 
-                    "MARK_UNAVAILABLE" -> {
+                        pendingDao.delete(op)
+                    } catch (_: Exception) {
+                        return Result.retry()
+                    }
+                }
+
+                "MARK_UNAVAILABLE" -> {
+                    try {
                         val p = gson.fromJson(op.payload, MarkUnavailablePayload::class.java)
                         firestore.collection("Product")
                             .document(p.productId)
                             .update("status", "Unavailable")
                             .await()
-                    }
 
-                    "CREATE_ORDER" -> {
+                        pendingDao.delete(op)
+                    } catch (_: Exception) {
+                        return Result.retry()
+                    }
+                }
+
+                "CREATE_ORDER" -> {
+                    try {
                         val p = gson.fromJson(op.payload, CreateOrderPayload::class.java)
                         firestore.collection("orders")
                             .add(mapOf(
@@ -66,27 +81,34 @@ class SyncWorker(
                                 "status"      to p.status
                             ))
                             .await()
-                    }
 
-                    "UPLOAD_IMAGE" -> {
-                        val p = gson.fromJson(op.payload, UploadImagePayload::class.java)
-                        val uri = Uri.parse(p.localUri)
+                        pendingDao.delete(op)
+                    } catch (_: Exception) {
+                        return Result.retry()
+                    }
+                }
+
+                "UPLOAD_IMAGE" -> {
+                    val p = gson.fromJson(op.payload, UploadImagePayload::class.java)
+                    val uri = Uri.parse(p.localUri)
+                    try {
                         storage.reference.child(p.remotePath)
                             .putFile(uri)
                             .await()
-
-                        val pendingImages = imageDao.getAll()
+                        imageDao.observeAll().first()
                             .filter { it.localUri == p.localUri && it.remotePath == p.remotePath }
-                        pendingImages.forEach { img ->
-                            imageDao.update(img.copy(state = "SUCCESS"))
-                        }
+                            .forEach { img -> imageDao.update(img.copy(state = "SUCCESS")) }
+                    } catch (e: Exception) {
+                        imageDao.observeAll().first()
+                            .filter { it.localUri == p.localUri && it.remotePath == p.remotePath }
+                            .forEach { img -> imageDao.update(img.copy(state = "FAILED")) }
+                        pendingDao.delete(op)
+                        continue
                     }
+                    pendingDao.delete(op)
                 }
-                pendingDao.delete(op)
             }
-            return Result.success()
-        } catch (e: Exception) {
-            return Result.retry()
         }
+        return Result.success()
     }
 }

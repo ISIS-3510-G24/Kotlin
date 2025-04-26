@@ -4,8 +4,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics") version "3.0.3"
-    id("com.google.dagger.hilt.android")
     id("org.jetbrains.kotlin.kapt")
+    id("com.google.dagger.hilt.android")
 }
 
 android {
@@ -79,11 +79,14 @@ dependencies {
     implementation (libs.androidx.biometric)
     implementation (libs.gson)
     implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    kapt(libs.androidx.room.compiler)
     implementation (libs.androidx.work.runtime.ktx)
     implementation (libs.hilt.android)
     kapt           (libs.hilt.compiler)
     implementation (libs.androidx.hilt.work)
     kapt           (libs.androidx.hilt.hilt.compiler)
     implementation("androidx.datastore:datastore-preferences:1.1.4")
+    implementation (libs.androidx.hilt.navigation.compose)
 
 }

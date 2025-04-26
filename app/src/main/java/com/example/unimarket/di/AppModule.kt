@@ -11,8 +11,10 @@ import com.example.unimarket.data.daos.ProductDao
 import com.example.unimarket.data.daos.WishlistDao
 import com.example.unimarket.utils.ConnectivityObserver
 import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.perf.FirebasePerformance
 import com.google.firebase.storage.FirebaseStorage
 import com.google.gson.Gson
 import dagger.Module
@@ -86,5 +88,14 @@ object AppModule {
     fun provideCrashlytics(@ApplicationContext c: Context): FirebaseCrashlytics =
         FirebaseCrashlytics.getInstance()
 
-    @Provides fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
+    @Provides @Singleton
+    fun provideFirebaseAuth(): FirebaseAuth =
+        FirebaseAuth.getInstance()
+
+    @Provides @Singleton
+    fun provideFirebasePerformance(): FirebasePerformance =
+        FirebasePerformance.getInstance()
+
+    @Provides @IoDispatcher
+    fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
 }

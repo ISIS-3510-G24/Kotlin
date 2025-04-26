@@ -152,6 +152,10 @@ class UniMarketRepository(
         )
     }
 
+    fun observeImageCacheEntries(): Flow<List<ImageCacheEntity>> =
+        imageCacheDao.observeAll()
+            .flowOn(ioDispatcher)
+
     fun getWishlistIds(): Flow<Set<String>> =
         wishlistDao.observeAll()
             .map { list -> list.map { it.productId }.toSet() }
