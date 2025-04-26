@@ -75,7 +75,7 @@ dependencies {
     implementation(libs.firebase.inappmessaging.display)
     implementation (libs.accompanist.flowlayout)
     implementation (libs.zxing.android.embedded)
-    implementation(libs.androidx.datastore.preferences)
+    //implementation(libs.androidx.datastore.preferences)
     implementation (libs.androidx.biometric)
     implementation (libs.gson)
     implementation(libs.androidx.room.runtime)
@@ -84,4 +84,6 @@ dependencies {
     kapt           (libs.hilt.compiler)
     implementation (libs.androidx.hilt.work)
     kapt           (libs.androidx.hilt.hilt.compiler)
+    implementation("androidx.datastore:datastore-preferences:1.1.4")
+
 }

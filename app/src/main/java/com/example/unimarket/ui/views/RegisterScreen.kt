@@ -62,6 +62,7 @@ fun RegisterScreen(
 
     val connectivityObserver = remember { ConnectivityObserver(context) }
     val isOnline by connectivityObserver.isOnline.collectAsState()
+    var showNoInternetDialog by remember { mutableStateOf(false) }
 
     // State for Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
@@ -96,17 +97,21 @@ fun RegisterScreen(
         }
     }
 
+    LaunchedEffect(isOnline) {
+        if (!isOnline) showNoInternetDialog = true
+    }
+
     LaunchedEffect(registerSuccessState) {
         if (registerSuccessState == true) onRegisterSuccess()
     }
 
-    if (!isOnline) {
+    if (showNoInternetDialog) {
         AlertDialog(
-            onDismissRequest = { /* Do nothing */ },
+            onDismissRequest = { showNoInternetDialog = false },
             title = { Text("No Internet Connection") },
             text = { Text("Please check your internet connection and try again.") },
             confirmButton = {
-                Button(onClick = { /* Do nothing */ }) {
+                Button(onClick = { showNoInternetDialog = false }) {
                     Text("OK")
                 }
             }

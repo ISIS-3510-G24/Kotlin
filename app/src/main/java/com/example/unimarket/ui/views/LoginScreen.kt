@@ -45,6 +45,7 @@ fun LoginScreen(
 
     val connectivityObserver = remember { ConnectivityObserver(context) }
     val isOnline by connectivityObserver.isOnline.collectAsState()
+    var showNoInternetDialog by remember { mutableStateOf(false) }
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -52,21 +53,26 @@ fun LoginScreen(
     var loginSuccessState = viewModel.loginSuccess.value
     var errorMessageState = viewModel.errorMessage.value
 
+    LaunchedEffect(isOnline) {
+        if (!isOnline) showNoInternetDialog = true
+    }
+
     // If login is successful, navigate to the home screen
     LaunchedEffect(loginSuccessState) {
         if (loginSuccessState == true) onLoginSuccess()
     }
 
-    if (!isOnline) {
+    if (showNoInternetDialog) {
         AlertDialog(
-            onDismissRequest = { /* Do nothing */ },
+            onDismissRequest = { showNoInternetDialog = false },
             title = { Text("No Internet Connection") },
             text = { Text("Please check your internet connection and try again.") },
             confirmButton = {
-                TextButton(onClick = { /* Do nothing */ }) {
+                TextButton(onClick = { showNoInternetDialog = false }) {
                     Text("OK")
                 }
-            }
+            },
+            dismissButton = {}
         )
     }
 
