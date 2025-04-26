@@ -1,5 +1,6 @@
 package com.example.unimarket.ui.views
 
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -15,11 +16,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -27,14 +31,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.unimarket.R
 import com.example.unimarket.data.PreferencesManager
 import com.google.firebase.analytics.FirebaseAnalytics
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // Data class for onboarding pages
 data class OnboardingPage(
@@ -43,57 +50,77 @@ data class OnboardingPage(
 
 @Composable
 fun OnboardingScreen(
-    onFinishOnboarding: () -> Unit, onSkip: () -> Unit
+    onFinishOnboarding: () -> Unit,
+    onSkip: () -> Unit
 ) {
-    // List of pages (slides) for the onboarding
+    // Define the pages
     val pages = listOf(
         OnboardingPage(
             imageRes = R.drawable.onboarding1,
             title = "Welcome to UniMarket",
-            description = "Post your items with a few steps, set your price, and connect with buyers instantly. Buy and sell the best school supplies with your app!\nWhat are you waiting for!"
-        ), OnboardingPage(
+            description = "Post your items with a few steps… What are you waiting for!"
+        ),
+        OnboardingPage(
             imageRes = R.drawable.onboarding2,
-            title = "Buy and sell school supplies with ease",
-            description = "Find the supplies ypu need or sell what you no longer use. Whether you're looking for textbooks, calculators, or art materials, we've got you covered!."
-        ), OnboardingPage(
+            title = "Buy and sell with ease",
+            description = "Find the supplies you need or sell what you no longer use."
+        ),
+        OnboardingPage(
             imageRes = R.drawable.onboarding3,
             title = "Filter by class & major",
-            description = "No more endless scrolling--just filter by course or major to find exactly what you need in seconds. Search by subject or specific class, discover items recommended for your major"
-        ), OnboardingPage(
+            description = "Filter by course or major to find exactly what you need."
+        ),
+        OnboardingPage(
             imageRes = R.drawable.onboarding4,
-            title = "Turn your unused supplies into cash",
-            description = "Post your items with a few taps, set your price, and connect with buyers instantly. Quick & easy listing process."
+            title = "Turn unused supplies into cash",
+            description = "Quick & easy listing process."
         )
     )
 
+    // Current page status
     var currentPage by remember { mutableStateOf(0) }
     val currentData = pages[currentPage]
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
+    // State to store the preloaded ImageBitmaps
+    val bitmaps = remember { mutableStateListOf<ImageBitmap>() }
+
+    // Preload in the background when mounting the Composable
+    LaunchedEffect(Unit) {
+        // One time IO
+        withContext(Dispatchers.IO) {
+            pages.forEach { page ->
+                val bmp = BitmapFactory
+                    .decodeResource(context.resources, page.imageRes)
+                    .asImageBitmap()
+                bitmaps.add(bmp)
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp)
     ) {
-        // Skip Intro button (top-right)
+        // --- Skip button ---
         Row(
-            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
         ) {
-            TextButton(
-                onClick = {
-                    // Mark onboarding as completed and skip
-                    coroutineScope.launch {
-                        PreferencesManager.setOnboardingCompleted(context, true)
-                    }
-                    onSkip()
-                }) {
+            TextButton(onClick = {
+                coroutineScope.launch {
+                    PreferencesManager.setOnboardingCompleted(context, true)
+                }
+                onSkip()
+            }) {
                 Text(text = "Skip Intro")
             }
         }
 
-        // Main content for the current slide
+        // --- Main content ---
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -101,18 +128,31 @@ fun OnboardingScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Display onboarding image
-            Image(
-                painter = painterResource(id = currentData.imageRes),
-                contentDescription = "Onboarding Image",
-                modifier = Modifier
-                    .height(200.dp)
-                    .fillMaxWidth()
-            )
+            // The bitmap if it is already preloaded, if not, a placeholder
+            val bitmap: ImageBitmap? = bitmaps.getOrNull(currentPage)
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = "Onboarding Image",
+                    modifier = Modifier
+                        .height(200.dp)
+                        .fillMaxWidth()
+                )
+            } else {
+                // Placeholder o loader
+                Box(
+                    modifier = Modifier
+                        .height(200.dp)
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Title
             Text(
                 text = currentData.title,
                 style = MaterialTheme.typography.headlineSmall,
@@ -121,7 +161,6 @@ fun OnboardingScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Description
             Text(
                 text = currentData.description,
                 style = MaterialTheme.typography.bodyMedium,
@@ -130,7 +169,7 @@ fun OnboardingScreen(
             )
         }
 
-        // Dots indicator for pages
+        // --- Dots indicator ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -145,27 +184,30 @@ fun OnboardingScreen(
                         .size(if (isSelected) 12.dp else 8.dp)
                         .clip(CircleShape)
                         .background(
-                            if (isSelected) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            if (isSelected)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         )
                 )
             }
         }
 
-        // Next Button
+        // --- Next / Finish button ---
         Button(
             onClick = {
                 if (currentPage == pages.lastIndex) {
-                    // Mark onboarding as completed on last page
+                    // Log event and finish
                     FirebaseAnalytics.getInstance(context)
                         .logEvent("onboarding_complete", Bundle())
                     onFinishOnboarding()
                 } else {
                     currentPage++
                 }
-            }, modifier = Modifier.fillMaxWidth()
+            },
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(text = if (currentPage == pages.lastIndex) "Next" else "Next")
+            Text(text = if (currentPage == pages.lastIndex) "Finish" else "Next")
         }
     }
 }

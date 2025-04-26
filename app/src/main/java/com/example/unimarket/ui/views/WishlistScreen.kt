@@ -1,6 +1,7 @@
 package com.example.unimarket.ui.views
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,11 +45,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.ui.viewmodels.WishlistItem
 import com.example.unimarket.ui.viewmodels.WishlistViewModel
+import com.example.unimarket.utils.ConnectivityObserver
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +59,17 @@ fun WishlistScreen(
     onBack: () -> Unit,
     viewModel: WishlistViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    // Use ConnectivityObserver to monitor network status
+    val connectivityObserver = remember { ConnectivityObserver(context) }
+    val isOnline by connectivityObserver.isOnline.collectAsState()
+
+    // Unregister callback when leaving the composable
+    DisposableEffect(Unit) {
+        onDispose { connectivityObserver.unregister() }
+    }
+
+    // Collect wishlist state
     val items by viewModel.wishlistItems.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -62,10 +77,17 @@ fun WishlistScreen(
     var showDialog by remember { mutableStateOf(false) }
     var unavailableTitle by remember { mutableStateOf("") }
 
+    // Retry fetching when connectivity is restored and there was a previous error
+    LaunchedEffect(isOnline) {
+        if (isOnline && error != null) {
+            viewModel.fetchWishlist()
+        }
+    }
+
+    // Show dialog if any item is unavailable
     LaunchedEffect(items) {
-        val firstUnavailable = items.firstOrNull { !it.available }
-        if (firstUnavailable != null) {
-            unavailableTitle = firstUnavailable.title
+        items.firstOrNull { !it.available }?.let {
+            unavailableTitle = it.title
             showDialog = true
         }
     }
@@ -87,32 +109,48 @@ fun WishlistScreen(
                 .padding(padding)
                 .fillMaxSize()
         ) {
-            when {
-                loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                error != null -> ErrorContent(
-                    error = error!!,
-                    onRetry = { viewModel.fetchWishlist() },
-                    modifier = Modifier.align(Alignment.Center)
-                )
-                items.isEmpty() -> Text(
-                    text = "No items in wishlist",
-                    modifier = Modifier.align(Alignment.Center)
-                )
-                else -> LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(items) { item ->
-                        WishlistRow(
-                            item = item,
-                            onRemove = { viewModel.removeFromWishlist(item.productId) },
-                            onClick = {
-                                if (!item.available) {
-                                    unavailableTitle = item.title
-                                    showDialog = true
-                                }
-                            }
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Offline banner
+                if (!isOnline) {
+                    Text(
+                        text = "Offline – waiting for connection...",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(8.dp)
+                    )
+                }
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when {
+                        loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                        error != null -> ErrorContent(
+                            error = error!!,
+                            onRetry = { viewModel.fetchWishlist() },
+                            modifier = Modifier.align(Alignment.Center)
                         )
+                        items.isEmpty() -> Text(
+                            text = "No items in wishlist",
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                        else -> LazyColumn(
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(items) { item ->
+                                WishlistRow(
+                                    item = item,
+                                    onRemove = { viewModel.removeFromWishlist(item.productId) },
+                                    onClick = {
+                                        if (!item.available) {
+                                            unavailableTitle = item.title
+                                            showDialog = true
+                                        }
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }

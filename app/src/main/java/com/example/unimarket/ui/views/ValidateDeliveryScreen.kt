@@ -1,7 +1,6 @@
 package com.example.unimarket.ui.views
 
 import android.graphics.Bitmap
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +23,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,8 +39,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.unimarket.ui.viewmodels.OrderWithProduct
 import com.example.unimarket.ui.viewmodels.ValidateDeliveryViewModel
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.qrcode.QRCodeWriter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +50,9 @@ fun ValidateDeliveryScreen(
     val loading by viewModel.loading.collectAsState()
     val error by viewModel.error.collectAsState()
     var selectedOrder by remember { mutableStateOf<OrderWithProduct?>(null) }
+
+    val qrBitmapState = viewModel.qrBitmap.collectAsState(initial = null)
+    val qrBitmap: Bitmap? by qrBitmapState
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Validate Delivery (Seller)") }) }
@@ -70,6 +71,8 @@ fun ValidateDeliveryScreen(
                 )
                 selectedOrder != null -> SelectedOrderContent(
                     order = selectedOrder!!,
+                    qrBitmap = qrBitmap,
+                    onLoadQr = viewModel::loadQrBitmap,
                     onClose = { selectedOrder = null }
                 )
                 else -> OrdersList(
@@ -104,29 +107,39 @@ private fun OrdersList(
 @Composable
 private fun SelectedOrderContent(
     order: OrderWithProduct,
+    qrBitmap: Bitmap?,
+    onLoadQr: (OrderWithProduct) -> Unit,
     onClose: () -> Unit
 ) {
+    // Disparamos la carga o reutilización del QR cuando cambie el pedido
+    LaunchedEffect(key1 = order.hashConfirm) {
+        onLoadQr(order)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // CORRECTED INTERPOLATION
         Text("Order: ${order.productTitle}", style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(16.dp))
         Text("QR code to confirm delivery", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(24.dp))
-        generateQrBitmap(order.hashConfirm)?.let { bmp ->
+
+        if (qrBitmap != null) {
             Image(
-                bitmap = bmp.asImageBitmap(),
-                contentDescription = null,
+                bitmap = qrBitmap.asImageBitmap(),
+                contentDescription = "QR para orden ${order.orderId}",
                 modifier = Modifier
                     .size(250.dp)
                     .background(Color.White),
                 contentScale = ContentScale.Crop
             )
-        } ?: Text("Error generating QR", color = MaterialTheme.colorScheme.error)
+        } else {
+            CircularProgressIndicator()
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
         Button(onClick = onClose) { Text("Close") }
     }
@@ -145,20 +158,5 @@ private fun ErrorContent(
         Text(text = error, color = MaterialTheme.colorScheme.error)
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = onRetry) { Text("Retry") }
-    }
-}
-
-fun generateQrBitmap(data: String): Bitmap? {
-    return try {
-        val size = 512
-        val matrix = QRCodeWriter().encode(data, BarcodeFormat.QR_CODE, size, size)
-        Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565).also { bmp ->
-            for (x in 0 until size) for (y in 0 until size) {
-                bmp.setPixel(x, y, if (matrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
-            }
-        }
-    } catch (e: Exception) {
-        Log.e("GenerateQR", "Error generating QR", e)
-        null
     }
 }

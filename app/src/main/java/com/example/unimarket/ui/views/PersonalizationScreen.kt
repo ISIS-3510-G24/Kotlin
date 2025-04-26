@@ -26,7 +26,6 @@ import com.example.unimarket.data.PreferencesManager
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.launch
 
-
 @Composable
 fun PersonalizationScreen(
     onFinishPersonalization: () -> Unit
@@ -34,20 +33,24 @@ fun PersonalizationScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    // Example list of interests
+    // List of available interests
     val interests = listOf(
         "Sell Items",
         "Turbo Delivery",
-        "Buying Major Specific Materials",
-        "Buying Class Specific Materials",
-        "Extra Curricular Supplies",
-        "School Supplies Exchange",
+        "Buying Major-Specific Materials",
+        "Buying Class-Specific Materials",
+        "Extracurricular Supplies",
+        "Supplies Exchange",
         "Advanced Browsing",
-        "Everything",
+        "Everything"
     )
 
-    // State for selected interests
-    val selectedInterests = remember { mutableStateListOf<String>() }
+    // Load previously selected interests
+    val selectedInterests = remember {
+        mutableStateListOf<String>().apply {
+            addAll(PreferencesManager.getSelectedInterests(context) as Collection<String>)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -55,18 +58,18 @@ fun PersonalizationScreen(
             .padding(24.dp)
     ) {
         Text(
-            text = "Personalize your experience",
+            text = "Personalize Your Experience",
             style = MaterialTheme.typography.headlineSmall
         )
         Text(
-            text = "Choose your interests.",
+            text = "Select your interests below:",
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(vertical = 4.dp)
+            modifier = Modifier.padding(vertical = 8.dp)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // List of interests with checkboxes
+        // Checkbox list occupies remaining space
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(interests) { interest ->
                 Row(
@@ -79,11 +82,8 @@ fun PersonalizationScreen(
                     Checkbox(
                         checked = selectedInterests.contains(interest),
                         onCheckedChange = { checked ->
-                            if (checked) {
-                                selectedInterests.add(interest)
-                            } else {
-                                selectedInterests.remove(interest)
-                            }
+                            if (checked) selectedInterests.add(interest)
+                            else selectedInterests.remove(interest)
                         }
                     )
                 }
@@ -92,11 +92,14 @@ fun PersonalizationScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Next Button to finish personalization
+        // Save preferences and finish
         Button(
             onClick = {
-                // Optionally save preferences here
                 coroutineScope.launch {
+                    PreferencesManager.setSelectedInterests(
+                        context,
+                        selectedInterests.toSet()
+                    )
                     PreferencesManager.setOnboardingCompleted(context, true)
                 }
                 FirebaseAnalytics.getInstance(context)
