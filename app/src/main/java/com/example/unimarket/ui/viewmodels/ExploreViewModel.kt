@@ -176,6 +176,7 @@ class ExploreViewModel @Inject constructor(
                 .collect { entities ->
                     _products.value = entities.map { ent ->
                         Product(
+                            id = ent.id,
                             title = ent.title,
                             description = ent.description,
                             imageUrls = ent.imageUrls,
