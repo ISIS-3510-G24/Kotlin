@@ -1,11 +1,17 @@
 package com.example.unimarket.ui.viewmodels
 
+import androidx.core.os.bundleOf
 import androidx.lifecycle.ViewModel
-import com.example.unimarket.ui.data.FirebaseFirestoreSingleton
+import com.example.unimarket.data.FirebaseFirestoreSingleton
 import com.example.unimarket.ui.models.EditProfileUiState
 import com.example.unimarket.ui.models.Major
 import com.example.unimarket.ui.models.User
+import com.google.firebase.Firebase
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.analytics
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.perf.FirebasePerformance
+import com.google.firebase.perf.metrics.Trace
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,10 +22,27 @@ class EditProfileViewModel : ViewModel() {
     private val usersRef = FirebaseFirestoreSingleton.getCollection("User")
     private val majorsRef = FirebaseFirestoreSingleton.getCollection("majors")
 
+    private val performance = FirebasePerformance.getInstance()
+    private val analytics: FirebaseAnalytics = Firebase.analytics
+    private var trace: Trace? = null
+
     private val _uiState = MutableStateFlow(EditProfileUiState())
     val uiState: StateFlow<EditProfileUiState> = _uiState.asStateFlow()
 
+    fun onScreenLoadStart() {
+        trace = performance.newTrace("load_EditProfileScreen").apply { start() }
+        analytics.logEvent("screen_load_start", bundleOf("screen" to "EditProfile"))
+    }
+    fun onScreenLoadEnd(success: Boolean = true) {
+        trace?.stop()
+        analytics.logEvent(
+            "screen_load_end",
+            bundleOf("screen" to "EditProfile", "success" to success)
+        )
+    }
+
     init {
+        onScreenLoadStart()
         loadMajors()
         loadUser()
     }

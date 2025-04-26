@@ -1,7 +1,6 @@
 package com.example.unimarket
 
 import android.annotation.SuppressLint
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,30 +9,31 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.unimarket.ui.data.PreferencesManager
+import androidx.navigation.navArgument
+import com.example.unimarket.data.PreferencesManager
+import com.example.unimarket.ui.theme.UniMarketTheme
+import com.example.unimarket.ui.viewmodels.FindDetailViewModel
+import com.example.unimarket.ui.viewmodels.ProductDetailViewModel
+import com.example.unimarket.ui.views.FindDetailScreen
 import com.example.unimarket.ui.views.LoginScreen
 import com.example.unimarket.ui.views.MainScreen
 import com.example.unimarket.ui.views.OnboardingScreen
 import com.example.unimarket.ui.views.PersonalizationScreen
+import com.example.unimarket.ui.views.ProductDetailScreen
 import com.example.unimarket.ui.views.RegisterScreen
-import com.example.unimarket.ui.theme.UniMarketTheme
-import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.crashlytics.FirebaseCrashlytics
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        FirebaseAnalytics.getInstance(this).logEvent("app_open", Bundle())
-
-
-        FirebaseCrashlytics.getInstance().setCustomKey("os_version", Build.VERSION.RELEASE)
-        FirebaseCrashlytics.getInstance().setCustomKey("device", "${Build.MANUFACTURER} ${Build.MODEL}")
 
         setContent {
             UniMarketTheme {
@@ -58,10 +58,10 @@ fun AppNavigation() {
     val currentUser = FirebaseAuth.getInstance().currentUser
 
     // Set startDestination based on whether onboarding and authentication status
-    val startDestination = if (!onboardingCompleted) {
-        "onboarding"
-    } else {
-        if (currentUser != null) "main" else "login"
+    val startDestination = when {
+        !onboardingCompleted -> "onboarding"
+        currentUser == null -> "login"
+        else -> "main"
     }
 
     NavHost(navController = navController, startDestination = startDestination)
@@ -111,8 +111,33 @@ fun AppNavigation() {
                 }
             )
         }
+
         composable("main") {
-            MainScreen()
+            MainScreen(rootNavController = navController)
+
+        }
+
+        composable(
+            route = "productDetail/{productId}",
+            arguments = listOf(navArgument("productId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val detailVm: ProductDetailViewModel =
+                viewModel(viewModelStoreOwner = backStackEntry)
+            ProductDetailScreen(
+                navController = navController,
+                viewModel = detailVm
+            )
+        }
+        composable(
+            route = "findDetail/{findId}",
+            arguments = listOf(navArgument("findId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val findDetailVm: FindDetailViewModel =
+                viewModel (viewModelStoreOwner = backStackEntry)
+            FindDetailScreen(
+                navController = navController,
+                viewModel = findDetailVm
+            )
         }
     }
 }

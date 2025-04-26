@@ -32,7 +32,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.unimarket.R
-import com.example.unimarket.ui.data.PreferencesManager
+import com.example.unimarket.data.PreferencesManager
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.launch
 

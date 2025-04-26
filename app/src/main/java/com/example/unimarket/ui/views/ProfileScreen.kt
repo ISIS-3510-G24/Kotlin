@@ -1,27 +1,27 @@
 package com.example.unimarket.ui.views
 
+import android.app.Activity
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,13 +49,16 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.ui.models.BottomNavItem
 import com.example.unimarket.ui.viewmodels.ProfileViewModel
 import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.perf.ktx.performance
+import com.google.zxing.integration.android.IntentIntegrator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     navController: NavController,
+    rootNavController: NavController,
     bottomItems: List<BottomNavItem>,
     viewModel: ProfileViewModel = viewModel()
 ) {
@@ -63,8 +66,41 @@ fun ProfileScreen(
     val context = LocalContext.current
     val analytics = FirebaseAnalytics.getInstance(context)
 
+    val qrLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val scannedHash = IntentIntegrator
+            .parseActivityResult(result.resultCode, result.data)
+            ?.contents
+
+        scannedHash?.let { hash ->
+            viewModel.validateOrder(
+                hashConfirm = hash,
+                onSuccess = { Toast.makeText(context, "Order validated", Toast.LENGTH_SHORT).show() },
+                onError    = { err -> Toast.makeText(context, "Error: $err", Toast.LENGTH_LONG).show() }
+            )
+        } ?: Toast.makeText(context, "Operation canceled", Toast.LENGTH_SHORT).show()
+    }
+
+    // Launcher to pick image from gallery
+    val imagePicker = rememberLauncherForActivityResult (
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            viewModel.uploadProfilePicture(
+                uri = it,
+                onSuccess = {
+                    Toast.makeText(context, "Profile picture updated", Toast.LENGTH_SHORT).show()
+                },
+                onError = { err ->
+                    Toast.makeText(context, "Error: $err", Toast.LENGTH_LONG).show()
+                }
+            )
+        }
+    }
+
     Scaffold(
-        topBar = { CenterAlignedTopAppBar(title = { Text("Settings") }) },
+        topBar = { CenterAlignedTopAppBar(title = { Text("Settings") }) }
     ) { innerPadding ->
         Box(
             Modifier
@@ -84,28 +120,37 @@ fun ProfileScreen(
 
                 uiState.user != null -> {
                     val u = uiState.user!!
-                    Column(Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)) {
-                        // avatar y edit
-                        Box(Modifier
-                            .size(100.dp)
-                            .align(Alignment.CenterHorizontally)) {
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
+                        // Avatar + tap-to-select new picture
+                        Box(
+                            Modifier
+                                .size(100.dp)
+                                .align(Alignment.CenterHorizontally)
+                        ) {
                             Image(
                                 painter = rememberAsyncImagePainter(u.profilePicture),
                                 contentDescription = "Avatar",
                                 modifier = Modifier
                                     .size(100.dp)
-                                    .clip(CircleShape),
+                                    .clip(CircleShape)
+                                    .clickable {
+                                        // Launch gallery picker
+                                        imagePicker.launch("image/*")
+                                    },
                                 contentScale = ContentScale.Crop
                             )
+                            // Optional: overlay edit icon
                             IconButton(
-                                onClick = { navController.navigate("edit_profile") },
+                                onClick = { imagePicker.launch("image/*") },
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
                                     .size(24.dp)
                             ) {
-                                Icon(Icons.Default.Edit, contentDescription = null)
+                                Icon(Icons.Default.Edit, contentDescription = "Edit photo")
                             }
                         }
 
@@ -121,21 +166,6 @@ fun ProfileScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.align(Alignment.CenterHorizontally)
                         )
-
-                        Spacer(Modifier.height(4.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Default.Star,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text("${u.ratingAverage} (${u.reviewsCount} reviews)")
-                        }
 
                         Spacer(Modifier.height(16.dp))
 
@@ -159,10 +189,27 @@ fun ProfileScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
-                                            analytics.logEvent(
-                                                "profile_option_clicked",
-                                                Bundle().apply { putString("option", label) })
-                                            navController.navigate(route)
+                                            if (route == "validate_buyer") {
+                                                val integrator = IntentIntegrator(context as Activity)
+                                                    .setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
+                                                qrLauncher.launch(integrator.createScanIntent())
+                                            } else {
+                                                analytics.logEvent(
+                                                    "profile_option_clicked",
+                                                    Bundle().apply {
+                                                        putString("option", label)
+                                                    })
+                                                if (route == "logout") {
+                                                    FirebaseAuth.getInstance().signOut()
+                                                    rootNavController.navigate("login") {
+                                                        popUpTo(rootNavController.graph.startDestinationId) {
+                                                            inclusive = true
+                                                        }
+                                                    }
+                                                } else {
+                                                    navController.navigate(route)
+                                                }
+                                            }
                                         }
                                 )
                                 Divider()
