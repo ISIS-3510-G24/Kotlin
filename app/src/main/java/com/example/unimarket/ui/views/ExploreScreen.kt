@@ -48,7 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.R
@@ -64,27 +64,31 @@ import java.util.Locale
 fun ExploreScreen(
     navController: NavController,
     bottomNavController: NavController,
-    exploreViewModel: ExploreViewModel = viewModel()
+    exploreViewModel: ExploreViewModel = hiltViewModel(),
 ) {
-    val allProducts by exploreViewModel.products.collectAsState()
-    val isLoading by exploreViewModel.isLoading.collectAsState()
+    val products by exploreViewModel.products.collectAsState()
     val userPreferences by exploreViewModel.userPreferences.collectAsState()
+    val wishlistIds by exploreViewModel.wishlistIds.collectAsState()
+    val isLoading by exploreViewModel.isLoading.collectAsState()
+    val uploadState by exploreViewModel.uploadState.collectAsState()
+
+
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    var tipShown by remember { mutableStateOf(false) }
 
     // State for scrolling
     val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
 
     // Tip after 10s
-    var tipShown by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        exploreViewModel.loadProductsFromFirestore()
+        exploreViewModel.loadProducts()
     }
 
-    LaunchedEffect(Unit) {
-        delay(10_000)
+    LaunchedEffect(tipShown) {
         if (!tipShown) {
+            delay(10_000)
             snackbarHostState.showSnackbar("Tip: Shake your phone to refresh products.")
             tipShown = true
         }
@@ -97,10 +101,10 @@ fun ExploreScreen(
         }
     }
 
-    val recommended = allProducts.filter { p ->
+    val recommended = products.filter { p ->
         p.labels.any { it in userPreferences }
     }
-    val available = allProducts.filter { it.status == "Available" }
+    val available = products.filter { it.status == "Available" }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -134,8 +138,8 @@ fun ExploreScreen(
                         items(recommended) { product ->
                             ProductCard(
                                 product = product,
-                                isFavorite = product.id in exploreViewModel.wishlistIds.collectAsState().value,
-                                onFavoriteClick = { exploreViewModel.toggleWishlist(product) },
+                                isFavorite = product.id in wishlistIds,
+                                onFavoriteClick = { exploreViewModel.toggleWishlist(product.id) },
                                 modifier = Modifier
                                     .width(200.dp)
                                     .height(280.dp),
@@ -163,8 +167,8 @@ fun ExploreScreen(
                         rowItems.forEach { product ->
                             ProductCard(
                                 product = product,
-                                isFavorite = product.id in exploreViewModel.wishlistIds.collectAsState().value,
-                                onFavoriteClick = { exploreViewModel.toggleWishlist(product) },
+                                isFavorite = product.id in wishlistIds,
+                                onFavoriteClick = { exploreViewModel.toggleWishlist(product.id) },
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(280.dp),
@@ -216,7 +220,7 @@ fun ProductCard(
     isFavorite: Boolean,
     onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
 ) {
     Card(
         elevation = CardDefaults.cardElevation(4.dp),

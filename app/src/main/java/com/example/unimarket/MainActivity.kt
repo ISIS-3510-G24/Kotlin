@@ -30,7 +30,9 @@ import com.example.unimarket.ui.views.ProductDetailScreen
 import com.example.unimarket.ui.views.PublishProductScreen
 import com.example.unimarket.ui.views.RegisterScreen
 import com.google.firebase.auth.FirebaseAuth
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
