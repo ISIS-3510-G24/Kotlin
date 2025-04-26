@@ -12,6 +12,7 @@ import com.example.unimarket.data.entities.OrderEntity
 import com.example.unimarket.data.entities.PendingOpEntity
 import com.example.unimarket.data.entities.ProductEntity
 import com.example.unimarket.data.entities.WishlistEntity
+import com.example.unimarket.di.IoDispatcher
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
@@ -19,11 +20,15 @@ import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.storage
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.util.Date
@@ -38,44 +43,46 @@ class UniMarketRepository(
     private val firestore: FirebaseFirestore = Firebase.firestore,
     private val storage: FirebaseStorage = Firebase.storage,
     private val gson: Gson = Gson(),
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
-    fun getProducts(cacheTtlMs: Long): Flow<List<ProductEntity>> = flow {
-        val now = System.currentTimeMillis()
-
-        val roomList = productDao.getAll()
-        if (roomList.isEmpty()) {
-            FileCacheManager.readCache(appContext)?.let { json ->
-                val backup: List<ProductEntity> = gson.fromJson(
-                    json,
-                    object : TypeToken<List<ProductEntity>>() {}.type
-                )
-                emit(backup)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun getProducts(cacheTtlMs: Long): Flow<List<ProductEntity>> =
+        productDao.observeAll()
+            .flowOn(ioDispatcher)
+            .flatMapLatest { cached ->
+                flow {
+                    val now = System.currentTimeMillis()
+                    if (cached.isEmpty()) {
+                        FileCacheManager.readCache(appContext)?.let { json ->
+                            val backup: List<ProductEntity> = gson.fromJson(
+                                json, object : TypeToken<List<ProductEntity>>() {}.type
+                            )
+                            emit(backup)
+                        }
+                    }
+                    val oldest = cached.minOfOrNull { it.fetchedAt } ?: 0L
+                    if (cached.isNotEmpty() && now - oldest < cacheTtlMs) {
+                        emit(cached)
+                    } else {
+                        val snapshot = firestore.collection("Product").get().await()
+                        val fresh = snapshot.documents.map { doc ->
+                            ProductEntity(
+                                id          = doc.id,
+                                title       = doc.getString("title")    ?: "",
+                                description = doc.getString("description") ?: "",
+                                price       = doc.getDouble("price")    ?: 0.0,
+                                imageUrls   = doc.get("imageUrls") as? List<String> ?: emptyList(),
+                                labels      = doc.get("labels")    as? List<String> ?: emptyList(),
+                                status      = doc.getString("status") ?: "",
+                                fetchedAt   = now
+                            )
+                        }
+                        productDao.insertAll(fresh)
+                        FileCacheManager.writeCache(appContext, gson.toJson(fresh))
+                        emit(fresh)
+                    }
+                }.flowOn(ioDispatcher)
             }
-        }
-
-        val cached = productDao.getAll()
-        val oldestFetch = cached.minOfOrNull { it.fetchedAt } ?: 0L
-        if (cached.isNotEmpty() && now - oldestFetch < cacheTtlMs) {
-            emit(cached)
-        } else {
-            val snapshot = firestore.collection("Product").get().await()
-            val fresh = snapshot.documents.map { doc ->
-                ProductEntity(
-                    id          = doc.id,
-                    title       = doc.getString("title") ?: "",
-                    description = doc.getString("description") ?: "",
-                    price       = doc.getDouble("price") ?: 0.0,
-                    imageUrls   = doc.get("imageUrls") as? List<String> ?: emptyList(),
-                    labels      = doc.get("labels")    as? List<String> ?: emptyList(),
-                    status      = doc.getString("status") ?: "",
-                    fetchedAt   = now
-                )
-            }
-            productDao.insertAll(fresh)
-            FileCacheManager.writeCache(appContext, gson.toJson(fresh))
-            emit(fresh)
-        }
-    }.flowOn(Dispatchers.IO)
 
     suspend fun toggleWishlist(userId: String, productId: String) = withContext(Dispatchers.IO) {
         // Check if the product is already in the wishlist
@@ -145,11 +152,10 @@ class UniMarketRepository(
         )
     }
 
-    fun getWishlistIds(): Flow<Set<String>> = flow {
-        wishlistDao.getAll().let { list ->
-            emit(list.map { it.productId }.toSet())
-        }
-    }.flowOn(Dispatchers.IO)
+    fun getWishlistIds(): Flow<Set<String>> =
+        wishlistDao.observeAll()
+            .map { list -> list.map { it.productId }.toSet() }
+            .flowOn(ioDispatcher)
 
     val maxKb = (Runtime.getRuntime().maxMemory() / 1024).toInt()
     val cacheSize = maxKb / 8
@@ -183,4 +189,8 @@ class UniMarketRepository(
             )
         )
     }.flowOn(Dispatchers.IO)
+
+    fun observeOrders(): Flow<List<OrderEntity>> =
+        orderDao.observeAll()
+            .flowOn(ioDispatcher)
 }
