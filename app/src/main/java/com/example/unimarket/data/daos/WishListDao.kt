@@ -6,11 +6,12 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.example.unimarket.data.entities.WishlistEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface WishlistDao {
     @Query("SELECT * FROM wishlist")
-    suspend fun getAll(): List<WishlistEntity>
+    fun observeAll(): Flow<List<WishlistEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(item: WishlistEntity)
