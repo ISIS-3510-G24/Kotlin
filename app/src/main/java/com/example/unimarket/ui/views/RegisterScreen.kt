@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
@@ -30,6 +31,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -45,6 +48,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.data.FirebaseFirestoreSingleton
 import com.example.unimarket.ui.viewmodels.RegisterViewModel
+import com.example.unimarket.utils.ConnectivityObserver
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.launch
 
@@ -54,6 +58,11 @@ fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
     viewModel: RegisterViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+
+    val connectivityObserver = remember { ConnectivityObserver(context) }
+    val isOnline by connectivityObserver.isOnline.collectAsState()
+
     // State for Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -88,9 +97,20 @@ fun RegisterScreen(
     }
 
     LaunchedEffect(registerSuccessState) {
-        if (registerSuccessState == true) {
-            onRegisterSuccess()
-        }
+        if (registerSuccessState == true) onRegisterSuccess()
+    }
+
+    if (!isOnline) {
+        AlertDialog(
+            onDismissRequest = { /* Do nothing */ },
+            title = { Text("No Internet Connection") },
+            text = { Text("Please check your internet connection and try again.") },
+            confirmButton = {
+                Button(onClick = { /* Do nothing */ }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 
     // Load majors from Firestore
@@ -146,6 +166,7 @@ fun RegisterScreen(
         }
         Button(
             onClick = { imagePickerLauncher.launch("image/*") },
+            enabled = !isUploadingImage && isOnline,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Upload Profile Picture")
@@ -316,7 +337,7 @@ fun RegisterScreen(
         Button(
             onClick = { viewModel.registerUser() },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isUploadingImage && viewModel.allInputsValid()
+            enabled = !isUploadingImage && viewModel.allInputsValid() && isOnline
         ) {
             if (isUploadingImage) {
                 Text("Uploading image...")
