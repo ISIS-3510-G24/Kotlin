@@ -1,8 +1,6 @@
 package com.example.unimarket.data
 
 import android.content.Context
-import android.net.Uri
-import android.util.Log
 import androidx.collection.LruCache
 import com.example.unimarket.data.daos.ImageCacheDao
 import com.example.unimarket.data.daos.OrderDao
@@ -141,15 +139,15 @@ class UniMarketRepository(
                 state = "PENDING"
             )
         )
-        val ref = storage.reference.child(remotePath)
-        Log.d("Repo", "putFile localUri=$localUri remPath=$remotePath")
-        try {
-            ref.putFile(Uri.parse(localUri)).await()
-            val downloadUrl = ref.downloadUrl.await().toString()
-            imageCacheDao.updateEntry(localUri, remotePath, "SUCCESS", downloadUrl)
-        } catch (e: Exception) {
-            imageCacheDao.updateEntry(localUri, remotePath, "FAILED", null)
-        }
+
+        val payload = UploadImagePayload(localUri = localUri, remotePath = remotePath)
+        pendingOpDao.insert(
+            PendingOpEntity(
+                type = "UPLOAD_IMAGE",
+                payload = gson.toJson(payload),
+                createdAt = Date().time
+            )
+        )
     }
 
     fun observeImageCacheEntries() = imageCacheDao.observeAll().flowOn(ioDispatcher)
