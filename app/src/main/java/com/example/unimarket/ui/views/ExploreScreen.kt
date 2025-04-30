@@ -66,6 +66,7 @@ fun ExploreScreen(
     bottomNavController: NavController,
     exploreViewModel: ExploreViewModel = hiltViewModel(),
 ) {
+    val isOnline by exploreViewModel.isOnline.collectAsState()
     val products by exploreViewModel.products.collectAsState()
     val userPreferences by exploreViewModel.userPreferences.collectAsState()
     val wishlistIds by exploreViewModel.wishlistIds.collectAsState()
@@ -114,6 +115,19 @@ fun ExploreScreen(
             }
         }
     ) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            if (!isOnline) {
+                Text(
+                    "No internet connection - Showing cached data",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.errorContainer)
+                        .padding(8.dp),
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            }
+        }
+
         Box(
             Modifier
                 .fillMaxSize()
@@ -184,12 +198,7 @@ fun ExploreScreen(
 
             // Loader overlay
             if (isLoading) {
-                Box(
-                    Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+                CircularProgressIndicator(Modifier.align(Alignment.Center))
             }
 
             if (listState.firstVisibleItemIndex > 0) {

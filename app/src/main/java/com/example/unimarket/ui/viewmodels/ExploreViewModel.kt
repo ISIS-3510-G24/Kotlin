@@ -10,6 +10,7 @@ import com.example.unimarket.data.UniMarketRepository
 import com.example.unimarket.di.IoDispatcher
 import com.example.unimarket.ui.models.Product
 import com.example.unimarket.ui.models.User
+import com.example.unimarket.utils.ConnectivityObserver
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -44,11 +46,16 @@ class ExploreViewModel @Inject constructor(
     private val crashlytics: FirebaseCrashlytics,
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
+    private val connectivityObserver: ConnectivityObserver
 ) : ViewModel() {
+
+    private val _isOnline = MutableStateFlow(true)
+    val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
 
     companion object {
         private const val DEFAULT_CACHE_TTL_MS = 3_600_000L
     }
+
 
     private var uploadingRemotePath: String? = null
     private var loadTrace: Trace? = null
@@ -90,6 +97,12 @@ class ExploreViewModel @Inject constructor(
     }
 
     init {
+        viewModelScope.launch {
+            connectivityObserver.isOnline.collect { online ->
+                _isOnline.value = online
+            }
+        }
+
         observeWishlist()
         loadUserPreferences()
         loadProducts()
@@ -155,43 +168,53 @@ class ExploreViewModel @Inject constructor(
         )
     }
 
-    //
     fun loadProducts(cacheTtlMs: Long = DEFAULT_CACHE_TTL_MS) {
         viewModelScope.launch(ioDispatcher + handler) {
-            val trace = performance.newTrace("load_ExploreScreen").apply { start() }
-            analytics.logEvent("screen_load_start", bundleOf("screen" to "Explore"))
+            onScreenLoadStart()
+            withContext(Dispatchers.Main) {
+                _isLoading.value = true
+            }
 
-            _isLoading.value = true
-            repo.getProducts(cacheTtlMs)
-                .catch { e ->
-                    crashlytics.recordException(e)
-                    _errorMessage.emit("Could not load products: ${e.message}")
-                    analytics.logEvent(
-                        "load_products_failure",
-                        bundleOf("error_message" to (e.message ?: ""))
-                    )
-                    _isLoading.value = false
-                    trace.stop()
-                }
-                .collect { entities ->
-                    _products.value = entities.map { ent ->
+            try {
+                val entities = repo.getProducts(cacheTtlMs).first()
+
+                val mapped = withContext(Dispatchers.Default) {
+                    entities.map { ent ->
                         Product(
-                            id = ent.id,
-                            title = ent.title,
+                            id          = ent.id,
+                            title       = ent.title,
                             description = ent.description,
-                            imageUrls = ent.imageUrls,
-                            labels = ent.labels,
-                            price = ent.price,
-                            status = ent.status
+                            imageUrls   = ent.imageUrls,
+                            labels      = ent.labels,
+                            price       = ent.price,
+                            status      = ent.status
                         )
                     }
+                }
+
+                withContext(Dispatchers.Main) {
+                    _products.value = mapped
                     analytics.logEvent(
                         "load_products_success",
-                        bundleOf("product_count" to entities.size)
+                        bundleOf("product_count" to mapped.size)
                     )
-                    _isLoading.value = false
-                    trace.stop()
+                    onScreenLoadEnd(success = true)
                 }
+            } catch (e: Exception) {
+                crashlytics.recordException(e)
+                withContext(Dispatchers.Main) {
+                    _errorMessage.emit("Error loading products: ${e.message}")
+                    analytics.logEvent(
+                        "load_products_failure",
+                        bundleOf("error_message" to (e.message ?: "Unknown error"))
+                    )
+                    onScreenLoadEnd(success = false)
+                }
+            } finally {
+                withContext(Dispatchers.Main) {
+                    _isLoading.value = false
+                }
+            }
         }
     }
 
