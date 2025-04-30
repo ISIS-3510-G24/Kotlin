@@ -73,6 +73,9 @@ class UniMarketRepository(
                                 imageUrls   = d.get("imageUrls") as? List<String> ?: emptyList(),
                                 labels      = d.get("labels")    as? List<String> ?: emptyList(),
                                 status      = d.getString("status") ?: "",
+                                majorID     = d.getString("majorID") ?: "",
+                                classId     = d.getString("classID") ?: "",
+                                sellerID    = d.getString("sellerID") ?: "",
                                 fetchedAt   = now
                             )
                         }
@@ -185,6 +188,9 @@ class UniMarketRepository(
                 imageUrls = doc.get("imageUrls") as? List<String> ?: emptyList(),
                 labels = doc.get("labels") as? List<String> ?: emptyList(),
                 status = doc.getString("status")!!,
+                majorID = doc.getString("majorID")!!,
+                classId = doc.getString("classID")!!,
+                sellerID = doc.getString("sellerID")!!,
                 fetchedAt = now
             )
         )
