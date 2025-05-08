@@ -43,7 +43,7 @@ class UniMarketRepository(
     private val firestore: FirebaseFirestore = Firebase.firestore,
     private val storage: FirebaseStorage = Firebase.storage,
     private val gson: Gson = Gson(),
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
     fun getProducts(cacheTtlMs: Long): Flow<List<ProductEntity>> =
@@ -66,17 +66,17 @@ class UniMarketRepository(
                         val snap = firestore.collection("Product").get().await()
                         val fresh = snap.documents.map { d ->
                             ProductEntity(
-                                id          = d.id,
-                                title       = d.getString("title")    ?: "",
+                                id = d.id,
+                                title = d.getString("title") ?: "",
                                 description = d.getString("description") ?: "",
-                                price       = d.getDouble("price")    ?: 0.0,
-                                imageUrls   = d.get("imageUrls") as? List<String> ?: emptyList(),
-                                labels      = d.get("labels")    as? List<String> ?: emptyList(),
-                                status      = d.getString("status") ?: "",
-                                majorID     = d.getString("majorID") ?: "",
-                                classId     = d.getString("classID") ?: "",
-                                sellerID    = d.getString("sellerID") ?: "",
-                                fetchedAt   = now
+                                price = d.getDouble("price") ?: 0.0,
+                                imageUrls = d.get("imageUrls") as? List<String> ?: emptyList(),
+                                labels = d.get("labels") as? List<String> ?: emptyList(),
+                                status = d.getString("status") ?: "",
+                                majorID = d.getString("majorID") ?: "",
+                                classId = d.getString("classID") ?: "",
+                                sellerID = d.getString("sellerID") ?: "",
+                                fetchedAt = now
                             )
                         }
                         productDao.insertAll(fresh)
@@ -203,4 +203,14 @@ class UniMarketRepository(
     suspend fun clearImageCacheEntry(entry: ImageCacheEntity) = with(ioDispatcher) {
         imageCacheDao.delete(entry)
     }
+
+    suspend fun enqueuePublishProduct(payload: PublishProductPayload) =
+        withContext(ioDispatcher) {
+            val op = PendingOpEntity(
+                type = "PUBLISH_PRODUCT",
+                payload = gson.toJson(payload),
+                createdAt = Date().time
+            )
+            pendingOpDao.insert(op)
+        }
 }

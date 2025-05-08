@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.example.unimarket.data.entities.PendingOpEntity
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -26,7 +25,7 @@ class SyncWorker(
     private val gson      = Gson()
 
     override suspend fun doWork(): Result {
-        val ops: List<PendingOpEntity> = pendingDao.getAll()
+        val ops = pendingDao.getAll()
         for (op in ops) {
             when (op.type) {
                 "WISHLIST" -> {
@@ -107,6 +106,30 @@ class SyncWorker(
                         )
                     } finally {
                         pendingDao.delete(op)
+                    }
+                }
+
+                "PUBLISH_PRODUCT" -> {
+                    try {
+                        val p = gson.fromJson(op.payload, PublishProductPayload::class.java)
+                        val map = mapOf<String, Any>(
+                            "majorID" to p.majorId,
+                            "classId" to p.classId,
+                            "title" to p.title,
+                            "description" to p.description,
+                            "price" to p.price,
+                            "labels" to p.labels,
+                            "imageUrls" to p.imageUrls,
+                            "status" to p.status,
+                            "createdAt" to FieldValue.serverTimestamp(),
+                            "updatedAt" to FieldValue.serverTimestamp()
+                        )
+                        firestore.collection("Product")
+                            .add(map)
+                            .await()
+                        pendingDao.delete(op)
+                    } catch (e: Exception) {
+                        return Result.retry()
                     }
                 }
 
