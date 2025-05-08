@@ -63,6 +63,9 @@ class ExploreViewModel @Inject constructor(
     private val _products = MutableStateFlow<List<Product>>(emptyList())
     val products: StateFlow<List<Product>> = _products.asStateFlow()
 
+    private val _recommendations = MutableStateFlow<List<String>>(emptyList())
+    val recommendations: StateFlow<List<String>> = _recommendations.asStateFlow()
+
     private val _errorMessage = MutableSharedFlow<String?>(
         replay = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
@@ -104,6 +107,7 @@ class ExploreViewModel @Inject constructor(
         }
 
         observeWishlist()
+        observeRecommendations()
         loadUserPreferences()
         loadProducts()
         viewModelScope.launch(ioDispatcher) {
@@ -140,14 +144,18 @@ class ExploreViewModel @Inject constructor(
 
     fun toggleWishlist(productId: String) {
         viewModelScope.launch(ioDispatcher + handler) {
-            auth.currentUser?.uid?.let { uid ->
-                repo.toggleWishlist(uid, productId)
+            val uid = auth.currentUser?.uid ?: return@launch
+            val isNowAdded = !(_wishlistIds.value.contains(productId))
+            repo.toggleWishlist(uid, productId)
+            if (isNowAdded) {
                 analytics.logEvent(
-                    "toggle_wishlist",
-                    bundleOf(
-                        "product_id" to productId,
-                        "added" to (_wishlistIds.value.contains(productId).not())
-                    )
+                    "add_to_wishlist",
+                    bundleOf("product_id" to productId)
+                )
+            } else {
+                analytics.logEvent(
+                    "remove_from_wishlist",
+                    bundleOf("product_id" to productId)
                 )
             }
         }
@@ -247,6 +255,20 @@ class ExploreViewModel @Inject constructor(
                 _uiEvent.emit(UIEvent.ShowMessage("Failed to publish product: ${e.message}"))
             }
         }
+    }
+
+    private fun observeRecommendations() {
+        val uid = auth.currentUser?.uid ?: return
+        firestore.collection("recommendations")
+            .document(uid)
+            .addSnapshotListener { snap, err ->
+                if (err != null) {
+                    crashlytics.recordException(err)
+                    return@addSnapshotListener
+                }
+                val list = snap?.get("products") as? List<String> ?: emptyList()
+                _recommendations.value = list
+            }
     }
 
     // Public function to refresh products (when a shake gesture is detected)

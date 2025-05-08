@@ -12,6 +12,8 @@ import com.example.unimarket.data.PreferencesManager
 import com.example.unimarket.data.SyncWorker
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +38,12 @@ class UniMarketApplication : Application() {
                 .setCustomKey("device", "${Build.MANUFACTURER} ${Build.MODEL}")
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+
+        FirebaseFirestore.getInstance().apply {
+            firestoreSettings = FirebaseFirestoreSettings.Builder()
+                .setPersistenceEnabled(true)
+                .build()
         }
 
         // --- Coroutines + WorkManager ---

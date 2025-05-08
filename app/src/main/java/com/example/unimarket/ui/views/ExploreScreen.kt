@@ -47,7 +47,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.os.bundleOf
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
@@ -55,6 +57,7 @@ import com.example.unimarket.R
 import com.example.unimarket.ui.models.Product
 import com.example.unimarket.ui.viewmodels.ExploreViewModel
 import com.example.unimarket.ui.viewmodels.ShakeDetector
+import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -68,11 +71,12 @@ fun ExploreScreen(
 ) {
     val isOnline by exploreViewModel.isOnline.collectAsState()
     val products by exploreViewModel.products.collectAsState()
-    val userPreferences by exploreViewModel.userPreferences.collectAsState()
     val wishlistIds by exploreViewModel.wishlistIds.collectAsState()
+    val recIds by exploreViewModel.recommendations.collectAsState()
     val isLoading by exploreViewModel.isLoading.collectAsState()
     val uploadState by exploreViewModel.uploadState.collectAsState()
 
+    val analytics = FirebaseAnalytics.getInstance(LocalContext.current)
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -102,10 +106,8 @@ fun ExploreScreen(
         }
     }
 
-    val recommended = products.filter { p ->
-        p.labels.any { it in userPreferences }
-    }
-    val available = products.filter { it.status == "Available" }
+    val recommended = products.filter { it.id in recIds }
+    val available = products.filter { it.status == "Available" && it.id !in recIds }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -137,12 +139,14 @@ fun ExploreScreen(
                 state = listState,
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
-                item {
-                    Text(
-                        "Recommended for you",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(start = 16.dp, top = 16.dp)
-                    )
+                if (recommended.isNotEmpty()) {
+                    item {
+                        Text(
+                            "Recommended for you",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(start = 16.dp, top = 16.dp)
+                        )
+                    }
                 }
                 item {
                     LazyRow(
@@ -187,6 +191,10 @@ fun ExploreScreen(
                                     .weight(1f)
                                     .height(280.dp),
                                 onClick = {
+                                    analytics.logEvent(
+                                        "view_product_detail",
+                                        bundleOf("product_id" to product.id)
+                                    )
                                     navController.navigate("productDetail/${product.id}")
                                 }
                             )
