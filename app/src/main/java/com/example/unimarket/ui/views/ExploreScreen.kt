@@ -104,18 +104,7 @@ fun ExploreScreen(
     ) { padding ->
         Column(Modifier
             .fillMaxSize()
-            .padding(padding)) {
-            if (!isOnline) {
-                Text(
-                    "No internet connection - Showing cached data",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.errorContainer)
-                        .padding(8.dp),
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                )
-            }
-        }
+            .padding(padding)) {}
 
         Box(
             Modifier

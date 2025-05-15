@@ -1,6 +1,7 @@
 package com.example.unimarket.ui.views
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -42,7 +43,8 @@ fun MainScreen(
         Scaffold(
             bottomBar = {
                 BottomNavBar(navController = navController, items = bottomNavItems)
-            }
+            },
+            contentWindowInsets = WindowInsets(0,0,0,0)
         ) { innerPadding ->
             NavHost(
                 navController = navController,
