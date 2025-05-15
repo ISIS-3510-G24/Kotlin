@@ -31,7 +31,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,7 +60,7 @@ fun RegisterScreen(
     val context = LocalContext.current
 
     val connectivityObserver = remember { ConnectivityObserver(context) }
-    val isOnline by connectivityObserver.isOnline.collectAsState()
+    var isOnline by remember { mutableStateOf(true) }
     var showNoInternetDialog by remember { mutableStateOf(false) }
 
     // State for Snackbar

@@ -23,7 +23,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,7 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.ui.viewmodels.WishlistItem
 import com.example.unimarket.ui.viewmodels.WishlistViewModel
@@ -53,11 +52,9 @@ import com.example.unimarket.ui.viewmodels.WishlistViewModel
 @Composable
 fun WishlistScreen(
     onBack: () -> Unit,
-    viewModel: WishlistViewModel = viewModel()
+    viewModel: WishlistViewModel = hiltViewModel()
 ) {
-    val items by viewModel.wishlistItems.collectAsState()
-    val loading by viewModel.loading.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val items by viewModel.wishListItems.collectAsState()
 
     var showDialog by remember { mutableStateOf(false) }
     var unavailableTitle by remember { mutableStateOf("") }
@@ -88,12 +85,6 @@ fun WishlistScreen(
                 .fillMaxSize()
         ) {
             when {
-                loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                error != null -> ErrorContent(
-                    error = error!!,
-                    onRetry = { viewModel.fetchWishlist() },
-                    modifier = Modifier.align(Alignment.Center)
-                )
                 items.isEmpty() -> Text(
                     text = "No items in wishlist",
                     modifier = Modifier.align(Alignment.Center)

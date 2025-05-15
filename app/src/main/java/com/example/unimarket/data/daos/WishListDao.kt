@@ -10,15 +10,15 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface WishlistDao {
-    @Query("SELECT * FROM wishlist")
-    fun observeAll(): Flow<List<WishlistEntity>>
+    @Query("SELECT productId FROM wishlist")
+    fun observeIds(): Flow<List<String>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Query("SELECT COUNT(*) FROM wishlist WHERE productId = :id")
+    suspend fun count(id: String): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(item: WishlistEntity)
 
     @Delete
     suspend fun delete(item: WishlistEntity)
-
-    @Query("SELECT COUNT(*) FROM wishlist WHERE productId = :productId")
-    suspend fun count(productId: String): Int
 }

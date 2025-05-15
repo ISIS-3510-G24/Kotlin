@@ -37,7 +37,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,15 +46,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.os.bundleOf
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.R
 import com.example.unimarket.ui.models.Product
 import com.example.unimarket.ui.viewmodels.ExploreViewModel
-import com.example.unimarket.ui.viewmodels.ShakeDetector
-import kotlinx.coroutines.delay
+import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -63,15 +63,16 @@ import java.util.Locale
 @Composable
 fun ExploreScreen(
     navController: NavController,
-    bottomNavController: NavController,
     exploreViewModel: ExploreViewModel = hiltViewModel(),
 ) {
+    val isOnline by exploreViewModel.isOnline.collectAsState()
     val products by exploreViewModel.products.collectAsState()
-    val userPreferences by exploreViewModel.userPreferences.collectAsState()
     val wishlistIds by exploreViewModel.wishlistIds.collectAsState()
+    val recIds by exploreViewModel.recommendations.collectAsState()
     val isLoading by exploreViewModel.isLoading.collectAsState()
     val uploadState by exploreViewModel.uploadState.collectAsState()
 
+    val analytics = FirebaseAnalytics.getInstance(LocalContext.current)
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -80,40 +81,31 @@ fun ExploreScreen(
     // State for scrolling
     val listState = rememberLazyListState()
 
-    // Tip after 10s
 
-    LaunchedEffect(Unit) {
-        exploreViewModel.loadProducts()
-    }
 
-    LaunchedEffect(tipShown) {
-        if (!tipShown) {
-            delay(10_000)
-            snackbarHostState.showSnackbar("Tip: Shake your phone to refresh products.")
-            tipShown = true
-        }
-    }
+//    LaunchedEffect(tipShown) {
+//        if (!tipShown) {
+//            delay(10_000)
+//            snackbarHostState.showSnackbar("Tip: Shake your phone to refresh products.")
+//            tipShown = true
+//        }
+//    }
 
-    ShakeDetector {
-        exploreViewModel.refreshProducts()
-        scope.launch {
-            snackbarHostState.showSnackbar("Products refreshed!")
-        }
-    }
-
-    val recommended = products.filter { p ->
-        p.labels.any { it in userPreferences }
-    }
-    val available = products.filter { it.status == "Available" }
+    val recommended = products.filter { it.id in recIds }
+    val available = products.filter { it.status == "Available" && it.id !in recIds }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(onClick = { bottomNavController.navigate("publishProduct") }) {
+            FloatingActionButton(onClick = { navController.navigate("publishProduct") }) {
                 Icon(Icons.Default.Add, contentDescription = "Publish Product")
             }
         }
     ) { padding ->
+        Column(Modifier
+            .fillMaxSize()
+            .padding(padding)) {}
+
         Box(
             Modifier
                 .fillMaxSize()
@@ -123,12 +115,14 @@ fun ExploreScreen(
                 state = listState,
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
-                item {
-                    Text(
-                        "Recommended for you",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(start = 16.dp, top = 16.dp)
-                    )
+                if (recommended.isNotEmpty()) {
+                    item {
+                        Text(
+                            "Recommended for you",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(start = 16.dp, top = 16.dp)
+                        )
+                    }
                 }
                 item {
                     LazyRow(
@@ -173,6 +167,10 @@ fun ExploreScreen(
                                     .weight(1f)
                                     .height(280.dp),
                                 onClick = {
+                                    analytics.logEvent(
+                                        "view_product_detail",
+                                        bundleOf("product_id" to product.id)
+                                    )
                                     navController.navigate("productDetail/${product.id}")
                                 }
                             )
@@ -184,12 +182,7 @@ fun ExploreScreen(
 
             // Loader overlay
             if (isLoading) {
-                Box(
-                    Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+                CircularProgressIndicator(Modifier.align(Alignment.Center))
             }
 
             if (listState.firstVisibleItemIndex > 0) {

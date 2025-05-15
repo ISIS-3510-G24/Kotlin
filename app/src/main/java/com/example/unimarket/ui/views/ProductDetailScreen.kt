@@ -37,7 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.ui.models.Product
@@ -50,11 +50,12 @@ import java.util.Locale
 @Composable
 fun ProductDetailScreen(
     navController: NavController,
-    viewModel: ProductDetailViewModel = viewModel()
+    viewModel: ProductDetailViewModel = hiltViewModel(),
 ) {
+    val isOnline by viewModel.isOnline.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     val product by viewModel.product.collectAsState()
     val isFav by viewModel.isInWishlist.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
 
     Scaffold(
@@ -78,15 +79,22 @@ fun ProductDetailScreen(
                 isLoading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
+
                 error != null -> {
                     Text(
                         text = error!!,
                         color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center).padding(16.dp)
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(16.dp)
                     )
                 }
+
                 product != null -> {
-                    ProductDetailContent(product!!, isFav, onFavClick = { viewModel.toggleWishlist() })
+                    ProductDetailContent(
+                        product!!,
+                        isFav,
+                        onFavClick = { viewModel.toggleWishlist() })
                 }
             }
         }
@@ -97,17 +105,20 @@ fun ProductDetailScreen(
 private fun ProductDetailContent(
     product: Product,
     isFav: Boolean,
-    onFavClick: () -> Unit
+    onFavClick: () -> Unit,
 ) {
     val formattedPrice = remember(product.price) {
-        NumberFormat.getCurrencyInstance(Locale("es", "CO")).format(product.price)
+        NumberFormat
+            .getCurrencyInstance(Locale("es", "CO"))
+            .format(product.price)
     }
 
     Column(
         modifier = Modifier
             .verticalScroll(rememberScrollState())
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -126,7 +137,7 @@ private fun ProductDetailContent(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(product.imageUrls) { url ->
                 Card(
                     modifier = Modifier.size(200.dp),
@@ -134,7 +145,7 @@ private fun ProductDetailContent(
                 ) {
                     Image(
                         painter = rememberAsyncImagePainter(url),
-                        contentDescription = null,
+                        contentDescription = product.title,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )

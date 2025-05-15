@@ -1,6 +1,6 @@
 [versions]
 accompanistFlowlayout = "0.30.1"
-agp = "8.9.2"
+agp = "8.10.0"
 biometric = "1.1.0"
 datastorePreferences = "1.1.5"
 firebaseBom = "33.13.0"

@@ -23,3 +23,14 @@ data class UploadImagePayload(
     val localUri: String,
     val remotePath: String,
 )
+
+data class PublishProductPayload(
+    val majorId: String,
+    val classId: String,
+    val title: String,
+    val description: String,
+    val price: Double,
+    val labels: List<String>,
+    val imageUrls: List<String>,
+    val status: String,
+)

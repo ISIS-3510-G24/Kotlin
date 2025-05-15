@@ -18,13 +18,11 @@ import androidx.navigation.navArgument
 import com.example.unimarket.data.PreferencesManager
 import com.example.unimarket.ui.theme.UniMarketTheme
 import com.example.unimarket.ui.viewmodels.FindDetailViewModel
-import com.example.unimarket.ui.viewmodels.ProductDetailViewModel
 import com.example.unimarket.ui.views.FindDetailScreen
 import com.example.unimarket.ui.views.LoginScreen
 import com.example.unimarket.ui.views.MainScreen
 import com.example.unimarket.ui.views.OnboardingScreen
 import com.example.unimarket.ui.views.PersonalizationScreen
-import com.example.unimarket.ui.views.ProductDetailScreen
 import com.example.unimarket.ui.views.RegisterScreen
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.AndroidEntryPoint
@@ -117,17 +115,6 @@ fun AppNavigation() {
 
         }
 
-        composable(
-            route = "productDetail/{productId}",
-            arguments = listOf(navArgument("productId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val detailVm: ProductDetailViewModel =
-                viewModel(viewModelStoreOwner = backStackEntry)
-            ProductDetailScreen(
-                navController = navController,
-                viewModel = detailVm
-            )
-        }
         composable(
             route = "findDetail/{findId}",
             arguments = listOf(navArgument("findId") { type = NavType.StringType })
