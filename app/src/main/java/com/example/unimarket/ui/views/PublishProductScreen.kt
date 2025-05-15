@@ -4,7 +4,6 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -110,13 +109,9 @@ fun PublishProductScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (!isOnline) {
-                Text(
-                    text = "No internet connection - Your product will be published when online",
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.errorContainer)
-                        .padding(16.dp),
+                OfflineBanner(
+                    message = "No internet - your product will be published when you reconnect",
+                    height = 45.dp
                 )
             }
             // ─────────────────────────────────

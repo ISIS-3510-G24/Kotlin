@@ -11,23 +11,30 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.unimarket.data.SyncWorker
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 class ConnectivityObserver(private val context: Context) {
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    private val _isOnline = MutableStateFlow(checkOnline())
-    val isOnline: StateFlow<Boolean> = _isOnline
+    private val _rawOnline = MutableStateFlow(checkOnline())
+
+    @OptIn(FlowPreview::class)
+    val isOnline: Flow<Boolean> = _rawOnline
+        .debounce(300)
+        .distinctUntilChanged()
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
             val valid = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                     && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
 
-            val wasOnline = _isOnline.value
-            _isOnline.value = valid
+            val wasOnline = _rawOnline.value
+            _rawOnline.value = valid
 
             if (valid && !wasOnline) {
                 val oneTime = OneTimeWorkRequestBuilder<SyncWorker>()
@@ -40,7 +47,7 @@ class ConnectivityObserver(private val context: Context) {
                 WorkManager
                     .getInstance(context)
                     .enqueueUniqueWork(
-                        "sync_inmediate",
+                        "sync_immediate",
                         ExistingWorkPolicy.KEEP,
                         oneTime
                     )
@@ -48,7 +55,7 @@ class ConnectivityObserver(private val context: Context) {
         }
 
         override fun onLost(network: Network) {
-            _isOnline.value = false
+            _rawOnline.value = false
         }
     }
 
