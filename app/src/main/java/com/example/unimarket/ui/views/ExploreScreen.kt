@@ -66,7 +66,6 @@ import java.util.Locale
 @Composable
 fun ExploreScreen(
     navController: NavController,
-    bottomNavController: NavController,
     exploreViewModel: ExploreViewModel = hiltViewModel(),
 ) {
     val isOnline by exploreViewModel.isOnline.collectAsState()
@@ -112,7 +111,7 @@ fun ExploreScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(onClick = { bottomNavController.navigate("publishProduct") }) {
+            FloatingActionButton(onClick = { navController.navigate("publishProduct") }) {
                 Icon(Icons.Default.Add, contentDescription = "Publish Product")
             }
         }
