@@ -85,21 +85,18 @@ class UniMarketRepository(
                 }.flowOn(ioDispatcher)
             }.flowOn(ioDispatcher)
 
-    suspend fun toggleWishlist(userId: String, productId: String) = withContext(Dispatchers.IO) {
+    suspend fun toggleWishlist(userId: String, productId: String) = withContext(ioDispatcher) {
         // Check if the product is already in the wishlist
         val exists = wishlistDao.count(productId) > 0
 
-        // Insert pending operation
-        val payload = WishlistOpPayload(userId, productId, !exists)
         pendingOpDao.insert(
             PendingOpEntity(
                 type = "WISHLIST",
-                payload = gson.toJson(payload),
+                payload = gson.toJson(WishlistOpPayload(userId, productId, !exists)),
                 createdAt = Date().time
             )
         )
 
-        // Update the local database
         if (exists) wishlistDao.delete(WishlistEntity(productId, 0))
         else wishlistDao.insert(WishlistEntity(productId, Date().time))
     }
@@ -156,8 +153,17 @@ class UniMarketRepository(
     fun observeImageCacheEntries() = imageCacheDao.observeAll().flowOn(ioDispatcher)
 
     fun getWishlistIds(): Flow<Set<String>> =
-        wishlistDao.observeAll()
-            .map { list -> list.map { it.productId }.toSet() }
+        wishlistDao.observeIds()
+            .map { it.toSet() }
+            .flowOn(ioDispatcher)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun getWishlistProducts(cacheTtlMs: Long): Flow<List<ProductEntity>> =
+        getWishlistIds()
+            .flatMapLatest { ids ->
+                productDao.observeAll()
+                    .map { list -> list.filter { it.id in ids } }
+            }
             .flowOn(ioDispatcher)
 
     val maxKb = (Runtime.getRuntime().maxMemory() / 1024).toInt()

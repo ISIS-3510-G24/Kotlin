@@ -47,7 +47,7 @@ class ExploreViewModel @Inject constructor(
     private val crashlytics: FirebaseCrashlytics,
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
-    private val connectivityObserver: ConnectivityObserver
+    private val connectivityObserver: ConnectivityObserver,
 ) : ViewModel() {
 
     private val _isOnline = MutableStateFlow(true)
@@ -66,13 +66,13 @@ class ExploreViewModel @Inject constructor(
             .map { entities ->
                 entities.map { ent ->
                     Product(
-                        id          = ent.id,
-                        title       = ent.title,
+                        id = ent.id,
+                        title = ent.title,
                         description = ent.description,
-                        imageUrls   = ent.imageUrls,
-                        labels      = ent.labels,
-                        price       = ent.price,
-                        status      = ent.status
+                        imageUrls = ent.imageUrls,
+                        labels = ent.labels,
+                        price = ent.price,
+                        status = ent.status
                     )
                 }
             }
@@ -138,8 +138,11 @@ class ExploreViewModel @Inject constructor(
                             .find { it.remotePath == path && it.state != "PENDING" }
                             ?.let { entry ->
                                 when (entry.state) {
-                                    "SUCCESS" -> _uploadState.value = ImageUploadState.Success(entry.downloadUrl!!)
-                                    "FAILED"  -> _uploadState.value = ImageUploadState.Failed(entry.localUri)
+                                    "SUCCESS" -> _uploadState.value =
+                                        ImageUploadState.Success(entry.downloadUrl!!)
+
+                                    "FAILED" -> _uploadState.value =
+                                        ImageUploadState.Failed(entry.localUri)
                                 }
 
                                 viewModelScope.launch(ioDispatcher) {
@@ -163,20 +166,13 @@ class ExploreViewModel @Inject constructor(
 
     fun toggleWishlist(productId: String) {
         viewModelScope.launch(ioDispatcher + handler) {
-            val uid = auth.currentUser?.uid ?: return@launch
-            val isNowAdded = !(_wishlistIds.value.contains(productId))
+            val uid = auth.currentUser!!.uid
+            val added = !_wishlistIds.value.contains(productId)
             repo.toggleWishlist(uid, productId)
-            if (isNowAdded) {
-                analytics.logEvent(
-                    "add_to_wishlist",
-                    bundleOf("product_id" to productId)
-                )
-            } else {
-                analytics.logEvent(
-                    "remove_from_wishlist",
-                    bundleOf("product_id" to productId)
-                )
-            }
+            analytics.logEvent(
+                if (added) "add_to_wishlist" else "remove_from_wishlist",
+                bundleOf("product_id" to productId)
+            )
         }
     }
 
@@ -248,8 +244,10 @@ class ExploreViewModel @Inject constructor(
                 .collect { list ->
                     list.find { it.state != "PENDING" }?.let { entry ->
                         when (entry.state) {
-                            "SUCCESS" -> _uploadState.value = ImageUploadState.Success(entry.downloadUrl!!)
-                            "FAILED"  -> _uploadState.value = ImageUploadState.Failed(entry.localUri)
+                            "SUCCESS" -> _uploadState.value =
+                                ImageUploadState.Success(entry.downloadUrl!!)
+
+                            "FAILED" -> _uploadState.value = ImageUploadState.Failed(entry.localUri)
                         }
                     }
                 }
