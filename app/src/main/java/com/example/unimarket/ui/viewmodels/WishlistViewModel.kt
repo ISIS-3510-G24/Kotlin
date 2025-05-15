@@ -33,7 +33,7 @@ class WishlistViewModel @Inject constructor(
     val wishListItems: StateFlow<List<WishlistItem>> = _items.asStateFlow()
 
     companion object {
-        private const val DEFAULT_CACHE_TTL_MS = 3_600_000L
+        private const val DEFAULT_CACHE_TTL_MS = 300_000L
     }
 
     init {
