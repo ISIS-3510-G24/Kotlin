@@ -1,7 +1,6 @@
 package com.example.unimarket.ui.viewmodels
 
 import android.net.Uri
-import android.os.Bundle
 import android.util.Log
 import androidx.core.os.bundleOf
 import androidx.lifecycle.ViewModel
@@ -25,12 +24,14 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -60,8 +61,27 @@ class ExploreViewModel @Inject constructor(
     private var uploadingRemotePath: String? = null
     private var loadTrace: Trace? = null
 
-    private val _products = MutableStateFlow<List<Product>>(emptyList())
-    val products: StateFlow<List<Product>> = _products.asStateFlow()
+    val products: StateFlow<List<Product>> =
+        repo.getProducts(DEFAULT_CACHE_TTL_MS)
+            .map { entities ->
+                entities.map { ent ->
+                    Product(
+                        id          = ent.id,
+                        title       = ent.title,
+                        description = ent.description,
+                        imageUrls   = ent.imageUrls,
+                        labels      = ent.labels,
+                        price       = ent.price,
+                        status      = ent.status
+                    )
+                }
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList()
+            )
+
 
     private val _recommendations = MutableStateFlow<List<String>>(emptyList())
     val recommendations: StateFlow<List<String>> = _recommendations.asStateFlow()
@@ -109,7 +129,6 @@ class ExploreViewModel @Inject constructor(
         observeWishlist()
         observeRecommendations()
         loadUserPreferences()
-        loadProducts()
         viewModelScope.launch(ioDispatcher) {
             repo.observeImageCacheEntries()
                 .filter { entries -> entries.any { it.state != "PENDING" } }
@@ -176,56 +195,6 @@ class ExploreViewModel @Inject constructor(
         )
     }
 
-    fun loadProducts(cacheTtlMs: Long = DEFAULT_CACHE_TTL_MS) {
-        viewModelScope.launch(ioDispatcher + handler) {
-            onScreenLoadStart()
-            withContext(Dispatchers.Main) {
-                _isLoading.value = true
-            }
-
-            try {
-                val entities = repo.getProducts(cacheTtlMs).first()
-
-                val mapped = withContext(Dispatchers.Default) {
-                    entities.map { ent ->
-                        Product(
-                            id          = ent.id,
-                            title       = ent.title,
-                            description = ent.description,
-                            imageUrls   = ent.imageUrls,
-                            labels      = ent.labels,
-                            price       = ent.price,
-                            status      = ent.status
-                        )
-                    }
-                }
-
-                withContext(Dispatchers.Main) {
-                    _products.value = mapped
-                    analytics.logEvent(
-                        "load_products_success",
-                        bundleOf("product_count" to mapped.size)
-                    )
-                    onScreenLoadEnd(success = true)
-                }
-            } catch (e: Exception) {
-                crashlytics.recordException(e)
-                withContext(Dispatchers.Main) {
-                    _errorMessage.emit("Error loading products: ${e.message}")
-                    analytics.logEvent(
-                        "load_products_failure",
-                        bundleOf("error_message" to (e.message ?: "Unknown error"))
-                    )
-                    onScreenLoadEnd(success = false)
-                }
-            } finally {
-                withContext(Dispatchers.Main) {
-                    _isLoading.value = false
-                }
-            }
-        }
-    }
-
     private fun loadUserPreferences() {
         viewModelScope.launch(ioDispatcher + handler) {
             try {
@@ -271,11 +240,6 @@ class ExploreViewModel @Inject constructor(
             }
     }
 
-    // Public function to refresh products (when a shake gesture is detected)
-    fun refreshProducts() {
-        analytics.logEvent("refresh_products", Bundle()) // Log refresh event
-        loadProducts()
-    }
 
     private fun observeImageCache() {
         viewModelScope.launch(ioDispatcher + handler) {

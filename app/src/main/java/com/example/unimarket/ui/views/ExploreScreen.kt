@@ -37,7 +37,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,9 +55,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.R
 import com.example.unimarket.ui.models.Product
 import com.example.unimarket.ui.viewmodels.ExploreViewModel
-import com.example.unimarket.ui.viewmodels.ShakeDetector
 import com.google.firebase.analytics.FirebaseAnalytics
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -84,26 +81,15 @@ fun ExploreScreen(
     // State for scrolling
     val listState = rememberLazyListState()
 
-    // Tip after 10s
 
-    LaunchedEffect(Unit) {
-        exploreViewModel.loadProducts()
-    }
 
-    LaunchedEffect(tipShown) {
-        if (!tipShown) {
-            delay(10_000)
-            snackbarHostState.showSnackbar("Tip: Shake your phone to refresh products.")
-            tipShown = true
-        }
-    }
-
-    ShakeDetector {
-        exploreViewModel.refreshProducts()
-        scope.launch {
-            snackbarHostState.showSnackbar("Products refreshed!")
-        }
-    }
+//    LaunchedEffect(tipShown) {
+//        if (!tipShown) {
+//            delay(10_000)
+//            snackbarHostState.showSnackbar("Tip: Shake your phone to refresh products.")
+//            tipShown = true
+//        }
+//    }
 
     val recommended = products.filter { it.id in recIds }
     val available = products.filter { it.status == "Available" && it.id !in recIds }
@@ -116,7 +102,9 @@ fun ExploreScreen(
             }
         }
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
+        Column(Modifier
+            .fillMaxSize()
+            .padding(padding)) {
             if (!isOnline) {
                 Text(
                     "No internet connection - Showing cached data",
