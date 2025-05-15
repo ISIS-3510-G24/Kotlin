@@ -153,7 +153,7 @@ class ProductDetailViewModel @Inject constructor(
             } catch (e: Exception) {
                 crashlytics.recordException(e)
                 withContext(Dispatchers.Main) {
-                    _error.value = e.message ?: "Unknown error"
+                    _error.value = e.message ?: "Unknown error at fetching product"
                     trace?.stop()
                     analytics.logEvent(
                         "screen_load_end",

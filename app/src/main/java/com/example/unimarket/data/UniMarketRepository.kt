@@ -169,28 +169,46 @@ class UniMarketRepository(
     fun getProductByIdCached(productId: String, cacheTtlMs: Long): Flow<ProductEntity> = flow {
         productCache[productId]?.let {
             emit(it)
-        } ?: run {
-            val entity = getProductById(productId, cacheTtlMs).first()
-            productCache.put(productId, entity)
-            emit(entity)
+            return@flow
         }
+        val fromDb = productDao.getById(productId)
+        if (fromDb != null) {
+            productCache.put(productId, fromDb)
+            emit(fromDb)
+            return@flow
+        }
+
+        val remote = try {
+            getProductById(productId, cacheTtlMs).first()
+        } catch (e: Exception) {
+            throw Exception("Could not fetch detail: ${e.message}")
+        }
+
+        productCache.put(productId, remote)
+        productDao.insert(remote)
+        emit(remote)
     }.flowOn(Dispatchers.IO)
 
     fun getProductById(productId: String, cacheTtlMs: Long): Flow<ProductEntity> = flow {
         val doc = firestore.collection("Product").document(productId).get().await()
+
+        if (!doc.exists()) {
+            throw Exception("Product not found")
+        }
+
         val now = System.currentTimeMillis()
         emit(
             ProductEntity(
                 id = doc.id,
-                title = doc.getString("title")!!,
-                description = doc.getString("description")!!,
-                price = doc.getDouble("price")!!,
+                title = doc.getString("title") ?: "",
+                description = doc.getString("description") ?: "",
+                price = doc.getDouble("price") ?: 0.0,
                 imageUrls = doc.get("imageUrls") as? List<String> ?: emptyList(),
                 labels = doc.get("labels") as? List<String> ?: emptyList(),
-                status = doc.getString("status")!!,
-                majorID = doc.getString("majorID")!!,
-                classId = doc.getString("classID")!!,
-                sellerID = doc.getString("sellerID")!!,
+                status = doc.getString("status") ?: "",
+                majorID = doc.getString("majorID") ?: "",
+                classId = doc.getString("classID") ?: "",
+                sellerID = doc.getString("sellerID") ?: "",
                 fetchedAt = now
             )
         )
