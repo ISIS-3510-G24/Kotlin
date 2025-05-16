@@ -1,18 +1,25 @@
 package com.example.unimarket.ui.viewmodels
 
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.unimarket.data.PublishProductPayload
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import com.example.unimarket.data.PublishWithImagePayload
+import com.example.unimarket.data.SyncWorker
 import com.example.unimarket.data.UniMarketRepository
 import com.example.unimarket.di.IoDispatcher
 import com.example.unimarket.ui.models.ClassItem
 import com.example.unimarket.ui.models.Major
 import com.example.unimarket.utils.ConnectivityObserver
-import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
@@ -31,10 +38,10 @@ import javax.inject.Inject
 
 @HiltViewModel
 class PublishProductViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val repo: UniMarketRepository,
     private val firestore: FirebaseFirestore,
     private val crashlytics: FirebaseCrashlytics,
-    private val analytics: FirebaseAnalytics,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     private val connectivityObserver: ConnectivityObserver,
 ) : ViewModel() {
@@ -59,13 +66,20 @@ class PublishProductViewModel @Inject constructor(
     private val _uiEvent = MutableSharedFlow<UiEvent>(replay = 0)
     val uiEvent: SharedFlow<UiEvent> = _uiEvent.asSharedFlow()
 
+    sealed class ImageUploadState {
+        object Idle : ImageUploadState()
+        data class Pending(val localUri: String, val remotePath: String) : ImageUploadState()
+        data class Success(val remotePath: String) : ImageUploadState()
+        data class Failed(val localUri: String) : ImageUploadState()
+    }
+
     private val _uploadState = MutableStateFlow<ImageUploadState>(ImageUploadState.Idle)
     val uploadState: StateFlow<ImageUploadState> = _uploadState.asStateFlow()
 
     private val handler = CoroutineExceptionHandler { _, e ->
         crashlytics.recordException(e)
         viewModelScope.launch {
-            _uiEvent.emit(UiEvent.ShowMessage(e.message ?: "Error"))
+            _uiEvent.emit(UiEvent.ShowMessage(e.message ?: "Error: ${e.message}"))
         }
     }
 
@@ -80,7 +94,7 @@ class PublishProductViewModel @Inject constructor(
     }
 
     fun loadMajors() {
-        viewModelScope.launch(ioDispatcher) {
+        viewModelScope.launch(ioDispatcher + handler) {
             try {
                 val docs = firestore.collection("majors").get().await()
                 val list = docs.documents.mapNotNull {
@@ -101,7 +115,7 @@ class PublishProductViewModel @Inject constructor(
     fun onMajorSelected(major: Major) {
         // Clean previous classes
         _classes.value = emptyList()
-        viewModelScope.launch(ioDispatcher) {
+        viewModelScope.launch(ioDispatcher + handler) {
             try {
                 val docs = firestore
                     .collection("majors")
@@ -127,46 +141,64 @@ class PublishProductViewModel @Inject constructor(
         description: String,
         price: Double?,
         labels: List<String>,
-        imageUrl: String,
-    ) {
-        if (selectedMajor == null || selectedClass == null || title.isBlank() || description.isBlank() || price == null) {
-            viewModelScope.launch { _uiEvent.emit(UiEvent.ShowMessage("Fill out all fields")) }
-            return
+        localImageUri: Uri?,
+    ) = viewModelScope.launch(ioDispatcher + handler) {
+        if (selectedMajor == null || selectedClass == null
+            || title.isBlank() || description.isBlank() || price == null
+        ) {
+            _uiEvent.emit(UiEvent.ShowMessage("Fill all fields"))
+            return@launch
         }
-        val payload = PublishProductPayload(
-            majorId = selectedMajor.id,
-            classId = selectedClass.id,
-            title = title,
-            description = description,
-            price = price,
-            labels = labels,
-            imageUrls = listOf(imageUrl),
-            status = "Available"
+        if (localImageUri == null) {
+            _uiEvent.emit(UiEvent.ShowMessage("Choose an image first"))
+            return@launch
+        }
+
+        val remotePath = "product_images/${System.currentTimeMillis()}.jpg"
+        val payload = PublishWithImagePayload(
+            majorId       = selectedMajor!!.id,
+            classId       = selectedClass!!.id,
+            title         = title,
+            description   = description,
+            price         = price!!,
+            labels        = labels,
+            localImageUri = localImageUri.toString(),
+            remotePath    = remotePath,
+            status        = "Available"
         )
 
-        viewModelScope.launch(ioDispatcher + handler) {
-            // Enqueue the publish product operation
-            repo.enqueuePublishProduct(payload)
+        repo.enqueuePublishWithImage(payload)
 
+        val work = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .build()
+        WorkManager
+            .getInstance(appContext)
+            .enqueueUniqueWork(
+                "sync_pending_ops",
+                ExistingWorkPolicy.KEEP,
+                work
+            )
 
-            withContext(Dispatchers.Main) {
-                if (_isOnline.value) {
-                    _uiEvent.emit(UiEvent.ShowMessage("Product published successfully"))
-                } else {
-                    _uiEvent.emit(UiEvent.ShowMessage("No connection: Product will be published when online"))
-                }
-                _uiEvent.emit(UiEvent.NavigateBack)
-            }
-        }
+        _uiEvent.emit(
+            UiEvent.ShowMessage(
+                if (isOnline.value)
+                "Product queued for upload"
+                else "Product queued for upload, will be uploaded when online"
+            )
+        )
+        _uiEvent.emit(UiEvent.NavigateBack)
     }
 
     fun uploadImage(uri: Uri) {
         val path = "product_images/${System.currentTimeMillis()}.jpg"
         _uploadState.value = ImageUploadState.Pending(uri.toString(), path)
-        viewModelScope.launch(ioDispatcher + CoroutineExceptionHandler { _, e ->
-            crashlytics.recordException(e)
-            _uploadState.value = ImageUploadState.Failed(uri.toString())
-        }) {
+
+        viewModelScope.launch(ioDispatcher + handler) {
             repo.uploadImage( // Repo queues the upload and updates Room
                 localUri = uri.toString(),
                 remotePath = path
@@ -177,7 +209,7 @@ class PublishProductViewModel @Inject constructor(
                     entries.any { it.remotePath == path && it.state != "PENDING" }
                 }
                 .first()
-                .find() { it.remotePath == path }
+                .find { it.remotePath == path }
                 ?.let { entry ->
                     if (entry.state == "SUCCESS" && entry.downloadUrl != null) {
                         _uploadState.value = ImageUploadState.Success(entry.downloadUrl)
@@ -188,10 +220,5 @@ class PublishProductViewModel @Inject constructor(
         }
     }
 
-    sealed class ImageUploadState {
-        object Idle : ImageUploadState()
-        data class Pending(val localUri: String, val remotePath: String) : ImageUploadState()
-        data class Success(val remotePath: String) : ImageUploadState()
-        data class Failed(val localUri: String) : ImageUploadState()
-    }
+
 }

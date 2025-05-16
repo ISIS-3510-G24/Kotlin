@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
@@ -33,7 +33,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -43,36 +42,38 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.ui.models.ClassItem
 import com.example.unimarket.ui.models.Major
-import com.example.unimarket.ui.viewmodels.ImageUploadState
 import com.example.unimarket.ui.viewmodels.PublishProductViewModel
+import com.example.unimarket.ui.viewmodels.PublishProductViewModel.ImageUploadState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun PublishProductScreen(
     navController: NavController,
-    viewModel: PublishProductViewModel = hiltViewModel()
+    viewModel: PublishProductViewModel = hiltViewModel(),
 ) {
     val isOnline by viewModel.isOnline.collectAsState()
     val majors by viewModel.majors.collectAsState()
     val classes by viewModel.classes.collectAsState()
-    val scope        = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     val uiEvents = viewModel.uiEvent
-
     val uploadState by viewModel.uploadState.collectAsState()
+
+    var localPreviewUri by remember { mutableStateOf<Uri?>(null) }
 
     // Form state
     var selectedMajor by remember { mutableStateOf<Major?>(null) }
     var selectedClass by remember { mutableStateOf<ClassItem?>(null) }
     var expandedMajor by remember { mutableStateOf(false) }
     var expandedClass by remember { mutableStateOf(false) }
-
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var priceText by remember { mutableStateOf("") }
     var labelsText by remember { mutableStateOf("") }
-    var imageUrl by remember { mutableStateOf<String?>(null)}
+    var imageUrl by remember { mutableStateOf<String?>(null) }
 
+    val priceVal = priceText.toDoubleOrNull()
+
+    val uploadedImageUrl = (uploadState as? ImageUploadState.Success)?.remotePath.orEmpty()
 
     // Listen to UiEvents
     LaunchedEffect(Unit) {
@@ -87,17 +88,27 @@ fun PublishProductScreen(
         }
     }
 
+
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
+            localPreviewUri = it
             viewModel.uploadImage(it)
         }
     }
 
+    val canPublish = listOf(
+        selectedMajor != null,
+        selectedClass != null,
+        title.isNotBlank(),
+        description.isNotBlank(),
+        priceVal != null,
+        localPreviewUri != null
+    ).all { it }
 
     Scaffold(
-        topBar       = { TopAppBar(title = { Text("Publish Product") }) },
+        topBar = { TopAppBar(title = { Text("Publish Product") }) },
         snackbarHost = { SnackbarHost(hostState = snackbar) }
     ) { padding ->
         Column(
@@ -109,9 +120,13 @@ fun PublishProductScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (!isOnline) {
-                OfflineBanner(
-                    message = "No internet - your product will be published when you reconnect",
-                    height = 45.dp
+                Text(
+                    "No connection: will queue until online",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(8.dp)
                 )
             }
             // ─────────────────────────────────
@@ -218,49 +233,35 @@ fun PublishProductScreen(
 
             Button(
                 onClick = { picker.launch("image/*") },
-                enabled = isOnline,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Select Image")
             }
-            when (uploadState) {
-                is ImageUploadState.Pending -> {
-                    CircularProgressIndicator()
-                }
-                is ImageUploadState.Failed -> {
-                    Text("Upload failed", color = MaterialTheme.colorScheme.error)
-                }
-                is ImageUploadState.Success -> {
-                    val url = (uploadState as ImageUploadState.Success).remotePath
-                    imageUrl = url
-                    Image(
-                        painter = rememberAsyncImagePainter(imageUrl),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                    )
-                }
-                else -> Unit
+
+            localPreviewUri?.let { uri ->
+                Image(
+                    painter = rememberAsyncImagePainter(uri),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    contentScale = ContentScale.Crop
+                )
             }
 
             Spacer(Modifier.height(16.dp))
 
             Button(
                 onClick = {
-                    val price = priceText.toDoubleOrNull()
                     viewModel.publish(
                         selectedMajor,
                         selectedClass,
                         title,
                         description,
-                        price,
+                        priceVal,
                         labelsText.split(",").map(String::trim).filter(String::isNotEmpty),
-                        imageUrl ?: ""
+                        localPreviewUri,
                     )
                 },
-                enabled = true,
+                enabled = canPublish,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Publish")

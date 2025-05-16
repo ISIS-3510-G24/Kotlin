@@ -54,7 +54,7 @@ class ExploreViewModel @Inject constructor(
     val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
 
     companion object {
-        private const val DEFAULT_CACHE_TTL_MS = 3_600_000L
+        private const val DEFAULT_CACHE_TTL_MS = 300_000L
     }
 
 

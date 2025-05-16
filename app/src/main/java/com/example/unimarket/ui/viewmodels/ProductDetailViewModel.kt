@@ -38,7 +38,7 @@ class ProductDetailViewModel @Inject constructor(
 ) : ViewModel() {
 
     companion object {
-        private const val DEFAULT_CACHE_TTL_MS = 3_600_000L // 1 hour
+        private const val DEFAULT_CACHE_TTL_MS = 300_000L // 5 minutes
     }
 
     private val productId: String = checkNotNull(savedStateHandle["productId"])

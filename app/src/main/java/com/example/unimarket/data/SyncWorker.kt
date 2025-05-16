@@ -13,16 +13,16 @@ import kotlinx.coroutines.tasks.await
 
 class SyncWorker(
     appContext: Context,
-    workerParams: WorkerParameters
+    workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
 
     private val db = UniMarketDatabase.getInstance(appContext)
     private val pendingDao = db.pendingOpDao()
-    private val imageDao   = db.imageCacheDao()
+    private val imageDao = db.imageCacheDao()
 
     private val firestore = Firebase.firestore
-    private val storage   = Firebase.storage
-    private val gson      = Gson()
+    private val storage = Firebase.storage
+    private val gson = Gson()
 
     override suspend fun doWork(): Result {
         val ops = pendingDao.getAll()
@@ -66,13 +66,13 @@ class SyncWorker(
                         firestore.collection("orders")
                             .add(
                                 mapOf(
-                                    "buyerID"     to p.buyerId,
-                                    "sellerID"    to p.sellerId,
+                                    "buyerID" to p.buyerId,
+                                    "sellerID" to p.sellerId,
                                     "hashConfirm" to p.hashConfirm,
-                                    "orderDate"   to FieldValue.serverTimestamp(),
-                                    "price"       to p.price,
-                                    "productID"   to p.productId,
-                                    "status"      to p.status
+                                    "orderDate" to FieldValue.serverTimestamp(),
+                                    "price" to p.price,
+                                    "productID" to p.productId,
+                                    "status" to p.status
                                 )
                             )
                             .await()
@@ -92,16 +92,16 @@ class SyncWorker(
                         val downloadUrl = ref.downloadUrl.await().toString()
 
                         imageDao.updateEntry(
-                            localUri    = p.localUri,
-                            remotePath  = p.remotePath,
-                            state       = "SUCCESS",
+                            localUri = p.localUri,
+                            remotePath = p.remotePath,
+                            state = "SUCCESS",
                             downloadUrl = downloadUrl
                         )
                     } catch (e: Exception) {
                         imageDao.updateEntry(
-                            localUri    = p.localUri,
-                            remotePath  = p.remotePath,
-                            state       = "FAILED",
+                            localUri = p.localUri,
+                            remotePath = p.remotePath,
+                            state = "FAILED",
                             downloadUrl = null
                         )
                     } finally {
@@ -133,9 +133,34 @@ class SyncWorker(
                     }
                 }
 
-                else -> {
-                    pendingDao.delete(op)
+                "PUBLISH_WITH_IMAGE" -> {
+                    try {
+                        val p = gson.fromJson(op.payload, PublishWithImagePayload::class.java)
+                        val ref = storage.reference.child(p.remotePath)
+                        ref.putFile(Uri.parse(p.localImageUri)).await()
+                        val downloadUrl = ref.downloadUrl.await().toString()
+                        val data = mapOf<String, Any>(
+                            "majorID" to p.majorId,
+                            "classId" to p.classId,
+                            "title" to p.title,
+                            "description" to p.description,
+                            "price" to p.price,
+                            "labels" to p.labels,
+                            "imageUrls" to listOf(downloadUrl),
+                            "status" to p.status,
+                            "createdAt" to FieldValue.serverTimestamp(),
+                            "updatedAt" to FieldValue.serverTimestamp()
+                        )
+                        firestore.collection("Product")
+                            .add(data)
+                            .await()
+                        pendingDao.delete(op)
+                    } catch (_: Exception) {
+                        return Result.retry()
+                    }
                 }
+
+                else -> pendingDao.delete(op)
             }
         }
         return Result.success()
