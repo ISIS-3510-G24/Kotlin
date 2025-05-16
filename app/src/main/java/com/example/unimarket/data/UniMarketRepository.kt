@@ -1,6 +1,7 @@
 package com.example.unimarket.data
 
 import android.content.Context
+import android.net.Uri
 import androidx.collection.LruCache
 import com.example.unimarket.data.daos.ImageCacheDao
 import com.example.unimarket.data.daos.OrderDao
@@ -237,4 +238,53 @@ class UniMarketRepository(
             )
             pendingOpDao.insert(op)
         }
+
+    suspend fun enqueuePublishWithImage(
+        payload: PublishWithImagePayload
+    ) = withContext(ioDispatcher) {
+        val op = PendingOpEntity(
+            type = "PUBLISH_WITH_IMAGE",
+            payload = gson.toJson(payload),
+            createdAt = Date().time
+        )
+        pendingOpDao.insert(op)
+    }
+
+    suspend fun publishProductWithImage(
+        payload: PublishProductPayload,
+        localImageUri: String,
+        online: Boolean,
+    ) = withContext(ioDispatcher) {
+        val remotePath = payload.imageUrls.first()
+
+        if (online) {
+            try {
+                val ref = storage.reference.child(remotePath)
+                ref.putFile(Uri.parse(localImageUri)).await()
+                val downloadUrl = ref.downloadUrl.await().toString()
+
+                val map = mapOf<String, Any>(
+                    "majorID" to payload.majorId,
+                    "classId" to payload.classId,
+                    "title" to payload.title,
+                    "description" to payload.description,
+                    "price" to payload.price,
+                    "labels" to payload.labels,
+                    "imageUrls" to listOf(downloadUrl),
+                    "status" to payload.status,
+                    "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                    "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                )
+                firestore.collection("Product")
+                    .add(map)
+                    .await()
+            } catch (e: Exception) {
+                uploadImage(localImageUri, remotePath)
+                enqueuePublishProduct(payload)
+            }
+        } else {
+            uploadImage(localImageUri, remotePath)
+            enqueuePublishProduct(payload)
+        }
+    }
 }
