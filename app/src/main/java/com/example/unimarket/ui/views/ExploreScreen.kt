@@ -91,7 +91,9 @@ fun ExploreScreen(
 //        }
 //    }
 
-    val recommended = products.filter { it.id in recIds }
+    val recommendedProducts = recIds.mapNotNull { recId ->
+        products.find { it.id == recId }
+    }
     val available = products.filter { it.status == "Available" && it.id !in recIds }
 
     Scaffold(
@@ -115,7 +117,7 @@ fun ExploreScreen(
                 state = listState,
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
-                if (recommended.isNotEmpty()) {
+                if (recommendedProducts.isNotEmpty()) {
                     item {
                         Text(
                             "Recommended for you",
@@ -129,7 +131,7 @@ fun ExploreScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(recommended) { product ->
+                        items(recommendedProducts) { product ->
                             ProductCard(
                                 product = product,
                                 isFavorite = product.id in wishlistIds,
