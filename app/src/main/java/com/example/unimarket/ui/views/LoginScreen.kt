@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -23,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -30,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.unimarket.R
 import com.example.unimarket.ui.viewmodels.LoginViewModel
+import com.example.unimarket.utils.ConnectivityObserver
 
 @Composable
 fun LoginScreen(
@@ -37,17 +40,39 @@ fun LoginScreen(
     onNavigateToRegister: () -> Unit,
     viewModel: LoginViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+
+    val connectivityObserver = remember { ConnectivityObserver(context) }
+    var isOnline by remember { mutableStateOf(true) }
+    var showNoInternetDialog by remember { mutableStateOf(false) }
+
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
     var loginSuccessState = viewModel.loginSuccess.value
     var errorMessageState = viewModel.errorMessage.value
 
+    LaunchedEffect(isOnline) {
+        if (!isOnline) showNoInternetDialog = true
+    }
+
     // If login is successful, navigate to the home screen
     LaunchedEffect(loginSuccessState) {
-        if (loginSuccessState == true) {
-            onLoginSuccess()
-        }
+        if (loginSuccessState == true) onLoginSuccess()
+    }
+
+    if (showNoInternetDialog) {
+        AlertDialog(
+            onDismissRequest = { showNoInternetDialog = false },
+            title = { Text("No Internet Connection") },
+            text = { Text("Please check your internet connection and try again.") },
+            confirmButton = {
+                TextButton(onClick = { showNoInternetDialog = false }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {}
+        )
     }
 
     Column (
@@ -107,6 +132,7 @@ fun LoginScreen(
         // Login button
         Button(
             onClick = { viewModel.loginUser(email, password) },
+            enabled = isOnline,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Login")
@@ -129,7 +155,10 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text("Not a member?")
-            TextButton(onClick = onNavigateToRegister) {
+            TextButton(
+                onClick = onNavigateToRegister,
+                enabled = isOnline
+            ) {
                 Text("Register now")
             }
         }

@@ -12,5 +12,8 @@ data class ProductEntity(
     val imageUrls: List<String>,
     val labels: List<String>,
     val status: String,
+    val majorID : String,
+    val classId: String,
+    val sellerID: String,
     val fetchedAt: Long
 )

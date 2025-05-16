@@ -24,7 +24,7 @@ import com.example.unimarket.data.entities.WishlistEntity
         ImageCacheEntity::class,
         PendingOpEntity::class
     ],
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

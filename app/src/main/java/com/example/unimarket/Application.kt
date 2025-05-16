@@ -10,10 +10,11 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.unimarket.data.PreferencesManager
 import com.example.unimarket.data.SyncWorker
-import com.example.unimarket.data.UniMarketDatabase
-import com.example.unimarket.data.UniMarketRepository
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
+import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,11 +22,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
+@HiltAndroidApp
 class UniMarketApplication : Application() {
-    companion object {
-        lateinit var repository: UniMarketRepository
-            private set
-    }
 
     override fun onCreate() {
         super.onCreate()
@@ -39,23 +37,13 @@ class UniMarketApplication : Application() {
             FirebaseCrashlytics.getInstance()
                 .setCustomKey("device", "${Build.MANUFACTURER} ${Build.MODEL}")
         } catch (e: Exception) {
-            // Si Firebase falla por alguna razón, loggear el error
             e.printStackTrace()
         }
 
-        // --- Room + Repository ---
-        try {
-            val db = UniMarketDatabase.getInstance(this)
-            repository = UniMarketRepository(
-                productDao    = db.productDao(),
-                wishlistDao   = db.wishlistDao(),
-                orderDao      = db.orderDao(),
-                imageCacheDao = db.imageCacheDao(),
-                pendingOpDao  = db.pendingOpDao()
-            )
-        } catch (e: Exception) {
-            // Loggear cualquier fallo en la creación de la base de datos
-            e.printStackTrace()
+        FirebaseFirestore.getInstance().apply {
+            firestoreSettings = FirebaseFirestoreSettings.Builder()
+                .setPersistenceEnabled(true)
+                .build()
         }
 
         // --- Coroutines + WorkManager ---
@@ -89,7 +77,6 @@ class UniMarketApplication : Application() {
                         syncWork
                     )
             } catch (e: Exception) {
-                // Loggear cualquier fallo en el trabajo de sincronización
                 e.printStackTrace()
             }
         }

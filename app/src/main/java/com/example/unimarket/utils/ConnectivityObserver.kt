@@ -4,49 +4,62 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.unimarket.data.SyncWorker
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 
-class ConnectivityObserver(context: Context) {
-    private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    private val _isOnline: MutableStateFlow<Boolean> = MutableStateFlow(checkOnline())
-    val isOnline: StateFlow<Boolean> = _isOnline
+class ConnectivityObserver(private val context: Context) {
+    private val connectivityManager =
+        context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    private fun checkOnline(): Boolean {
-        val nw: Network = connectivityManager.activeNetwork ?: return false
-        val caps: NetworkCapabilities? = connectivityManager.getNetworkCapabilities(nw)
-        return caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-    }
+    private val _rawOnline = MutableStateFlow(checkOnline())
+
+    @OptIn(FlowPreview::class)
+    val isOnline: Flow<Boolean> = _rawOnline
+        .debounce(300)
+        .distinctUntilChanged()
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            _isOnline.value = true
+            _rawOnline.value = true
 
-            val oneTime = OneTimeWorkRequestBuilder<SyncWorker>()
-                .setConstraints(Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build()
-                ).build()
-            WorkManager.getInstance(context)
-                .enqueueUniqueWork("sync_inmediate", ExistingWorkPolicy.KEEP, oneTime)
+            val job = OneTimeWorkRequestBuilder<SyncWorker>()
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build()
+                )
+                .build()
+            WorkManager
+                .getInstance(context)
+                .enqueueUniqueWork("sync_immediate", ExistingWorkPolicy.KEEP, job)
         }
 
         override fun onLost(network: Network) {
-            _isOnline.value = false
+            _rawOnline.value = false
         }
     }
 
     init {
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-        connectivityManager.registerNetworkCallback(request, networkCallback)
+        connectivityManager.registerDefaultNetworkCallback(networkCallback)
+    }
+
+    private fun checkOnline(): Boolean {
+        val net = connectivityManager.activeNetwork ?: return false
+        val caps = connectivityManager.getNetworkCapabilities(net) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    fun unregister() {
+        connectivityManager.unregisterNetworkCallback(networkCallback)
     }
 }

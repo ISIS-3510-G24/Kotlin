@@ -8,5 +8,6 @@ data class ImageCacheEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val localUri: String,
     val remotePath: String,
+    val downloadUrl: String? = null,
     val state: String
 )
