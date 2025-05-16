@@ -1,12 +1,13 @@
 package com.example.unimarket.ui.views
 
 import android.net.Uri
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,6 +20,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -31,7 +33,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -41,124 +42,74 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.unimarket.ui.models.ClassItem
 import com.example.unimarket.ui.models.Major
-import com.example.unimarket.ui.models.Product
-import com.example.unimarket.ui.viewmodels.ExploreViewModel
-import com.example.unimarket.ui.viewmodels.ImageUploadState
-import com.google.firebase.Timestamp
-import com.google.firebase.crashlytics.FirebaseCrashlytics
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
+import com.example.unimarket.ui.viewmodels.PublishProductViewModel
+import com.example.unimarket.ui.viewmodels.PublishProductViewModel.ImageUploadState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun PublishProductScreen(
     navController: NavController,
-    exploreViewModel: ExploreViewModel = hiltViewModel()
+    viewModel: PublishProductViewModel = hiltViewModel(),
 ) {
-    val isLoading   by exploreViewModel.isLoading.collectAsState()
-    val uploadState by exploreViewModel.uploadState.collectAsState()
-    val snackbarHost = remember { SnackbarHostState() }
-    val scope        = rememberCoroutineScope()
+    val isOnline by viewModel.isOnline.collectAsState()
+    val majors by viewModel.majors.collectAsState()
+    val classes by viewModel.classes.collectAsState()
+    val snackbar = remember { SnackbarHostState() }
+    val uiEvents = viewModel.uiEvent
+    val uploadState by viewModel.uploadState.collectAsState()
 
-    // Estados para dropdowns
-    var majors        by remember { mutableStateOf<List<Major>>(emptyList()) }
-    var expandedMajor by remember { mutableStateOf(false) }
+    var localPreviewUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Form state
     var selectedMajor by remember { mutableStateOf<Major?>(null) }
-
-    var classes       by remember { mutableStateOf<List<ClassItem>>(emptyList()) }
-    var expandedClass by remember { mutableStateOf(false) }
     var selectedClass by remember { mutableStateOf<ClassItem?>(null) }
-
-    var title       by remember { mutableStateOf("") }
+    var expandedMajor by remember { mutableStateOf(false) }
+    var expandedClass by remember { mutableStateOf(false) }
+    var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var priceText   by remember { mutableStateOf("") }
-    var labelsText  by remember { mutableStateOf("") }
+    var priceText by remember { mutableStateOf("") }
+    var labelsText by remember { mutableStateOf("") }
+    var imageUrl by remember { mutableStateOf<String?>(null) }
 
-    val imageUri    = remember { mutableStateOf<Uri?>(null) }
-    val imagePicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri -> imageUri.value = uri }
+    val priceVal = priceText.toDoubleOrNull()
 
-    // Mostrar mensajes de snackbar
+    val uploadedImageUrl = (uploadState as? ImageUploadState.Success)?.remotePath.orEmpty()
+
+    // Listen to UiEvents
     LaunchedEffect(Unit) {
-        exploreViewModel.uiEvent.collect { event ->
-            when(event) {
-                is ExploreViewModel.UIEvent.ShowMessage -> {
-                    snackbarHost.showSnackbar(event.message)
-                }
-                is ExploreViewModel.UIEvent.ProductPublished -> {
-                    navController.navigate("explore") {
-                        popUpTo("explore") { inclusive = true }
-                    }
-                }
+        uiEvents.collect { event ->
+            when (event) {
+                is PublishProductViewModel.UiEvent.ShowMessage ->
+                    snackbar.showSnackbar(event.text)
+
+                PublishProductViewModel.UiEvent.NavigateBack ->
+                    navController.popBackStack()
             }
         }
     }
 
-    // Cuando la imagen se sube con éxito, se construye el Product y se publica
-    LaunchedEffect(uploadState) {
-        if (uploadState is ImageUploadState.Success) {
-            val downloadUrl = (uploadState as ImageUploadState.Success).remotePath
-            val price = priceText.toDoubleOrNull() ?: return@LaunchedEffect
-            val product = Product(
-                classId     = selectedClass!!.id,
-                createdAt   = Timestamp.now(),
-                description = description,
-                imageUrls   = listOf(downloadUrl),
-                labels      = labelsText
-                    .split(",")
-                    .map(String::trim)
-                    .filter(String::isNotEmpty),
-                majorID     = selectedMajor!!.id,
-                price       = price,
-                sellerID    = exploreViewModel.getCurrentUserId(),
-                status      = "Available",
-                title       = title,
-                updatedAt   = Timestamp.now()
-            )
-            exploreViewModel.publishProduct(
-                product
-            )
+
+    val picker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            localPreviewUri = it
+            viewModel.uploadImage(it)
         }
     }
 
-    // Cargo lista de majors desde Firestore
-    LaunchedEffect(Unit) {
-        try {
-            val snapshot = Firebase.firestore.collection("majors").get().await()
-            majors = snapshot.documents
-                .mapNotNull { it.toObject(Major::class.java)?.copy(id = it.id) }
-        } catch (e: Exception) {
-            FirebaseCrashlytics.getInstance().recordException(e)
-            snackbarHost.showSnackbar("Failed to load majors")
-        }
-    }
-
-    // Cuando cambia selectedMajor, cargo las clases asociadas
-    LaunchedEffect(selectedMajor) {
-        selectedClass = null
-        selectedMajor?.let { major ->
-            try {
-                val snapshot = Firebase.firestore
-                    .collection("majors")
-                    .document(major.id)
-                    .collection("clases")
-                    .get()
-                    .await()
-                classes = snapshot.documents
-                    .mapNotNull { it.toObject(ClassItem::class.java)?.copy(id = it.id) }
-            } catch (e: Exception) {
-                FirebaseCrashlytics.getInstance().recordException(e)
-                snackbarHost.showSnackbar("Failed to load classes")
-            }
-        }
-    }
+    val canPublish = listOf(
+        selectedMajor != null,
+        selectedClass != null,
+        title.isNotBlank(),
+        description.isNotBlank(),
+        priceVal != null,
+        localPreviewUri != null
+    ).all { it }
 
     Scaffold(
-        topBar       = { TopAppBar(title = { Text("Publish Product") }) },
-        snackbarHost = { SnackbarHost(hostState = snackbarHost) }
+        topBar = { TopAppBar(title = { Text("Publish Product") }) },
+        snackbarHost = { SnackbarHost(hostState = snackbar) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -166,13 +117,23 @@ fun PublishProductScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(padding)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (!isOnline) {
+                Text(
+                    "No connection: will queue until online",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(8.dp)
+                )
+            }
             // ─────────────────────────────────
             // Dropdown de Major
             ExposedDropdownMenuBox(
                 expanded = expandedMajor,
-                onExpandedChange = { expandedMajor = !expandedMajor }
+                onExpandedChange = { expandedMajor = it }
             ) {
                 OutlinedTextField(
                     value = selectedMajor?.name.orEmpty(),
@@ -184,7 +145,7 @@ fun PublishProductScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor()              // <<—— ¡Muy importante!
+                        .menuAnchor()
                 )
                 ExposedDropdownMenu(
                     expanded = expandedMajor,
@@ -197,6 +158,7 @@ fun PublishProductScreen(
                             onClick = {
                                 selectedMajor = major
                                 expandedMajor = false
+                                viewModel.onMajorSelected(major)
                             }
                         )
                     }
@@ -204,19 +166,19 @@ fun PublishProductScreen(
             }
 
             // ─────────────────────────────────
-            // Dropdown de Class (semánticamente igual al anterior)
+            // Dropdown class
             ExposedDropdownMenuBox(
                 expanded = expandedClass,
                 onExpandedChange = {
-                    if (selectedMajor != null && classes.isNotEmpty())
-                        expandedClass = !expandedClass
+                    if (selectedMajor != null)
+                        expandedClass = it
                 }
             ) {
                 OutlinedTextField(
                     value = selectedClass?.name.orEmpty(),
                     onValueChange = { /* no-edit */ },
                     readOnly = true,
-                    enabled = selectedMajor != null && classes.isNotEmpty(),
+                    enabled = selectedMajor != null,
                     label = { Text("Class") },
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(expandedClass)
@@ -243,7 +205,7 @@ fun PublishProductScreen(
             }
 
             // ─────────────────────────────────
-            // Resto de campos
+            // Text fields
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
@@ -270,46 +232,39 @@ fun PublishProductScreen(
             )
 
             Button(
-                onClick = { imagePicker.launch("image/*") },
+                onClick = { picker.launch("image/*") },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Select Image")
             }
-            imageUri.value?.let { uri ->
+
+            localPreviewUri?.let { uri ->
                 Image(
                     painter = rememberAsyncImagePainter(uri),
                     contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
                     contentScale = ContentScale.Crop
                 )
             }
 
+            Spacer(Modifier.height(16.dp))
+
             Button(
                 onClick = {
-                    val price = priceText.toDoubleOrNull()
-                    if (selectedMajor != null && selectedClass != null
-                        && title.isNotBlank()
-                        && description.isNotBlank()
-                        && price != null
-                        && imageUri.value != null
-                    ) {
-                        Log.d(
-                            "PublishScreen",
-                            "CLICK! major=$selectedMajor, class=$selectedClass, title='$title', uri=${imageUri.value}"
-                        )
-                        exploreViewModel.uploadProductImage(imageUri.value!!)
-                    } else {
-                        scope.launch {
-                            snackbarHost.showSnackbar("Please fill all fields correctly.")
-                        }
-                    }
+                    viewModel.publish(
+                        selectedMajor,
+                        selectedClass,
+                        title,
+                        description,
+                        priceVal,
+                        labelsText.split(",").map(String::trim).filter(String::isNotEmpty),
+                        localPreviewUri,
+                    )
                 },
-                enabled = !isLoading,
+                enabled = canPublish,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (isLoading) "Publishing..." else "Publish")
+                Text("Publish")
             }
         }
     }

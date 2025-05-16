@@ -72,7 +72,8 @@ object AppModule {
             pendingOpDao   = pendingOpDao,
             firestore      = firestore,
             storage        = storage,
-            gson           = gson
+            gson           = gson,
+            ioDispatcher = Dispatchers.IO
     )
 
     @Provides @Singleton
