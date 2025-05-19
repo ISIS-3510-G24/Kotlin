@@ -9,6 +9,7 @@ import com.example.unimarket.data.daos.ImageCacheDao
 import com.example.unimarket.data.daos.OrderDao
 import com.example.unimarket.data.daos.PendingOpDao
 import com.example.unimarket.data.daos.ProductDao
+import com.example.unimarket.data.daos.UserReviewDao
 import com.example.unimarket.data.daos.WishlistDao
 import com.example.unimarket.utils.ConnectivityObserver
 import com.google.firebase.analytics.FirebaseAnalytics
@@ -60,6 +61,7 @@ object AppModule {
         orderDao: OrderDao,
         imageCacheDao: ImageCacheDao,
         pendingOpDao: PendingOpDao,
+        userReviewDao: UserReviewDao,
         firestore: FirebaseFirestore,
         storage: FirebaseStorage,
         gson: Gson
@@ -71,6 +73,7 @@ object AppModule {
             orderDao       = orderDao,
             imageCacheDao  = imageCacheDao,
             pendingOpDao   = pendingOpDao,
+            userReviewDao  = userReviewDao,
             firestore      = firestore,
             storage        = storage,
             gson           = gson,
