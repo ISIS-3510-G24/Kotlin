@@ -34,35 +34,79 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.ImageLoader
 import coil.compose.rememberAsyncImagePainter
-import com.example.unimarket.ui.viewmodels.Order
+import coil.disk.DiskCache
+import coil.memory.MemoryCache
+import coil.request.CachePolicy
+import com.example.unimarket.data.UniMarketDatabase
+import com.example.unimarket.data.UniMarketRepository
 import com.example.unimarket.ui.viewmodels.OrderTab
 import com.example.unimarket.ui.viewmodels.OrdersViewModel
+import kotlinx.coroutines.Dispatchers
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrdersScreen(
-    navController: NavController,          // para detalle de producto
-    bottomNavController: NavController,    // para chat
-    viewModel: OrdersViewModel = viewModel()
+    navController: NavController,
+    bottomNavController: NavController
 ) {
+    val context = LocalContext.current
+    val db      = UniMarketDatabase.getInstance(context)
+
+    val repo = remember {
+        UniMarketRepository(
+            appContext    = context,
+            productDao    = db.productDao(),
+            wishlistDao   = db.wishlistDao(),
+            orderDao      = db.orderDao(),
+            imageCacheDao = db.imageCacheDao(),
+            pendingOpDao  = db.pendingOpDao(),
+            ioDispatcher  = Dispatchers.IO
+        )
+    }
+
+    val factory = remember {
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                if (modelClass.isAssignableFrom(OrdersViewModel::class.java)) {
+                    @Suppress("UNCHECKED_CAST")
+                    return OrdersViewModel(repo) as T
+                }
+                throw IllegalArgumentException("Unknown ViewModel class: \$modelClass")
+            }
+        }
+    }
+
+    val viewModel: OrdersViewModel = viewModel(factory = factory)
+
     val orders     by viewModel.orders.collectAsState()
     val currentTab by viewModel.currentTab.collectAsState()
     val isLoading  by viewModel.isLoading.collectAsState()
     val error      by viewModel.error.collectAsState()
     val userId     = viewModel.getCurrentUserId()
 
+    val imageLoader = remember(context) {
+        ImageLoader.Builder(context)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .memoryCache { MemoryCache.Builder(context).maxSizePercent(0.25).build() }
+            .diskCache { DiskCache.Builder().directory(context.cacheDir.resolve("image_cache")).maxSizeBytes(50L * 1024 * 1024).build() }
+            .build()
+    }
+
     Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("My Orders") })
-        }
+        topBar = { TopAppBar(title = { Text("My Orders") }) }
     ) { padding ->
         Column(
             Modifier
@@ -99,7 +143,6 @@ fun OrdersScreen(
                                 OrderTab.SELLING -> o.sellerID == userId
                             }
                         }
-                        .sortedByDescending { it.orderDate.toDate() }
 
                     LazyColumn(
                         contentPadding = PaddingValues(8.dp),
@@ -107,10 +150,12 @@ fun OrdersScreen(
                     ) {
                         items(filtered) { order ->
                             OrderItem(
-                                order        = order,
-                                onCardClick  = {
-                                    bottomNavController.navigate("productDetail/${order.productId}")
-                                },
+                                order       = order,
+                                imageLoader = imageLoader,
+                                onCardClick = {
+                                    bottomNavController
+                                        .navigate("productDetail/${order.productId}")
+                                }
                             )
                         }
                     }
@@ -122,8 +167,9 @@ fun OrdersScreen(
 
 @Composable
 private fun OrderItem(
-    order: Order,
-    onCardClick: () -> Unit,
+    order: com.example.unimarket.ui.viewmodels.Order,
+    imageLoader: ImageLoader,
+    onCardClick: () -> Unit
 ) {
     val fmt = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
 
@@ -140,7 +186,10 @@ private fun OrderItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
-                painter            = rememberAsyncImagePainter(order.imageUrl),
+                painter            = rememberAsyncImagePainter(
+                    model       = order.imageUrl,
+                    imageLoader = imageLoader
+                ),
                 contentDescription = null,
                 contentScale       = ContentScale.Crop,
                 modifier           = Modifier
@@ -151,7 +200,7 @@ private fun OrderItem(
             Column(Modifier.weight(1f)) {
                 Text(order.productTitle, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 Spacer(Modifier.height(4.dp))
-                Text("Price: \$${order.price.toInt()}", fontSize = 14.sp)
+                Text("Price: $${order.price.toInt()}", fontSize = 14.sp)
                 Spacer(Modifier.height(2.dp))
                 Text("Date: ${fmt.format(order.orderDate.toDate())}", fontSize = 12.sp)
                 Spacer(Modifier.height(2.dp))
