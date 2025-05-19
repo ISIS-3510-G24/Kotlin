@@ -41,6 +41,7 @@ object AppModule {
     @Provides fun provideOrderDao(db: UniMarketDatabase) = db.orderDao()
     @Provides fun provideImageCacheDao(db: UniMarketDatabase) = db.imageCacheDao()
     @Provides fun providePendingOpDao(db: UniMarketDatabase) = db.pendingOpDao()
+    @Provides fun provideUserReviewDao(db: UniMarketDatabase) = db.userReviewDao()
 
     @Provides @Singleton
     fun provideFirestore(): FirebaseFirestore = FirebaseFirestore.getInstance()

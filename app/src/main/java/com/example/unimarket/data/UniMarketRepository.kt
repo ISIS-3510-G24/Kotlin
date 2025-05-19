@@ -7,11 +7,13 @@ import com.example.unimarket.data.daos.ImageCacheDao
 import com.example.unimarket.data.daos.OrderDao
 import com.example.unimarket.data.daos.PendingOpDao
 import com.example.unimarket.data.daos.ProductDao
+import com.example.unimarket.data.daos.UserReviewDao
 import com.example.unimarket.data.daos.WishlistDao
 import com.example.unimarket.data.entities.ImageCacheEntity
 import com.example.unimarket.data.entities.OrderEntity
 import com.example.unimarket.data.entities.PendingOpEntity
 import com.example.unimarket.data.entities.ProductEntity
+import com.example.unimarket.data.entities.UserReviewEntity
 import com.example.unimarket.data.entities.WishlistEntity
 import com.example.unimarket.di.IoDispatcher
 import com.google.firebase.Firebase
@@ -41,6 +43,7 @@ class UniMarketRepository(
     private val orderDao: OrderDao,
     private val imageCacheDao: ImageCacheDao,
     private val pendingOpDao: PendingOpDao,
+    private val userReviewDao: UserReviewDao,
     private val firestore: FirebaseFirestore = Firebase.firestore,
     private val storage: FirebaseStorage = Firebase.storage,
     private val gson: Gson = Gson(),
@@ -286,5 +289,41 @@ class UniMarketRepository(
             uploadImage(localImageUri, remotePath)
             enqueuePublishProduct(payload)
         }
+    }
+
+    fun observeUserReviewsFor(uid: String) =
+        userReviewDao.observeForUser(uid)
+
+    suspend fun postUserReview(
+        reviewerId: String,
+        targetId: String,
+        rating: Int,
+        comment: String,
+    ) {
+        val now = System.currentTimeMillis()
+        userReviewDao.insert(
+            UserReviewEntity(
+                targetUserId = targetId,
+                reviewerUserId = reviewerId,
+                rating = rating,
+                comment = comment,
+                createdAt = now,
+                status = "PENDING"
+            )
+        )
+
+        pendingOpDao.insert(
+            PendingOpEntity(
+                type = "USER_REVIEW",
+                payload = gson.toJson(mapOf(
+                    "targetUserId" to targetId,
+                    "reviewerUserId" to reviewerId,
+                    "rating" to rating,
+                    "comment" to comment,
+                    "createdAt" to now
+                )),
+                createdAt = now
+            )
+        )
     }
 }

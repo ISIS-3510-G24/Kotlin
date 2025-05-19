@@ -160,6 +160,29 @@ class SyncWorker(
                     }
                 }
 
+                "USER_REVIEW" -> {
+                    try {
+                        val p = gson.fromJson(op.payload, Map::class.java)
+                        val target = p["targetUserId"] as String
+                        firestore.collection("users")
+                            .document(target)
+                            .collection("reviews")
+                            .add(mapOf(
+                                "reviewerUserId" to p["reviewerUserId"],
+                                "rating" to p["rating"],
+                                "comment" to p["comment"],
+                                "createdAt" to FieldValue.serverTimestamp(),
+                            )).await()
+
+                        db.userReviewDao().updateStatus(
+                            id = (p["createdAt"] as Number).toLong(),
+                            status = "SENT"
+                        )
+                        pendingDao.delete(op)
+                    } catch (e: Exception) {
+                        return Result.retry()
+                    }
+                }
                 else -> pendingDao.delete(op)
             }
         }
