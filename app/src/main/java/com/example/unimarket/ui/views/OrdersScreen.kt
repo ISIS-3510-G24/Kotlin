@@ -25,6 +25,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -51,13 +52,13 @@ import java.util.Locale
 fun OrdersScreen(
     navController: NavController,          // para detalle de producto
     bottomNavController: NavController,    // para chat
-    viewModel: OrdersViewModel = viewModel()
+    viewModel: OrdersViewModel = viewModel(),
 ) {
-    val orders     by viewModel.orders.collectAsState()
+    val orders by viewModel.orders.collectAsState()
     val currentTab by viewModel.currentTab.collectAsState()
-    val isLoading  by viewModel.isLoading.collectAsState()
-    val error      by viewModel.error.collectAsState()
-    val userId     = viewModel.getCurrentUserId()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val userId = viewModel.getCurrentUserId()
 
     Scaffold(
         topBar = {
@@ -73,8 +74,8 @@ fun OrdersScreen(
                 OrderTab.values().forEach { tab ->
                     Tab(
                         selected = currentTab == tab,
-                        onClick  = { viewModel.setTab(tab) },
-                        text     = { Text(tab.name.capitalize(Locale.ROOT)) }
+                        onClick = { viewModel.setTab(tab) },
+                        text = { Text(tab.name.capitalize(Locale.ROOT)) }
                     )
                 }
             }
@@ -95,7 +96,7 @@ fun OrdersScreen(
                         .filter { o ->
                             when (currentTab) {
                                 OrderTab.HISTORY -> true
-                                OrderTab.BUYING  -> o.buyerID  == userId
+                                OrderTab.BUYING -> o.buyerID == userId
                                 OrderTab.SELLING -> o.sellerID == userId
                             }
                         }
@@ -107,10 +108,14 @@ fun OrdersScreen(
                     ) {
                         items(filtered) { order ->
                             OrderItem(
-                                order        = order,
-                                onCardClick  = {
+                                order = order,
+                                currentUserId = userId,
+                                onCardClick = {
                                     bottomNavController.navigate("productDetail/${order.productId}")
                                 },
+                                onReviewClick = { targetId ->
+                                    navController.navigate("writeUserReview/$targetId")
+                                }
                             )
                         }
                     }
@@ -123,13 +128,15 @@ fun OrdersScreen(
 @Composable
 private fun OrderItem(
     order: Order,
+    currentUserId: String?,
     onCardClick: () -> Unit,
+    onReviewClick: (String) -> Unit,
 ) {
     val fmt = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
 
     Card(
         elevation = CardDefaults.cardElevation(4.dp),
-        modifier  = Modifier
+        modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onCardClick)
     ) {
@@ -140,10 +147,10 @@ private fun OrderItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
-                painter            = rememberAsyncImagePainter(order.imageUrl),
+                painter = rememberAsyncImagePainter(order.imageUrl),
                 contentDescription = null,
-                contentScale       = ContentScale.Crop,
-                modifier           = Modifier
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
                     .size(64.dp)
                     .clip(MaterialTheme.shapes.medium)
             )
@@ -156,6 +163,21 @@ private fun OrderItem(
                 Text("Date: ${fmt.format(order.orderDate.toDate())}", fontSize = 12.sp)
                 Spacer(Modifier.height(2.dp))
                 Text("Status: ${order.status}", fontSize = 14.sp)
+            }
+        }
+        Row(
+            Modifier
+                .padding(12.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = {
+                val targetId = if (order.buyerID == currentUserId)
+                    order.sellerID else order.buyerID
+                onReviewClick(targetId)
+            }) {
+                Text("Write Review")
             }
         }
     }

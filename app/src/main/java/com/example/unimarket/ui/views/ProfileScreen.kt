@@ -171,6 +171,7 @@ fun ProfileScreen(
 
                         val menu = listOf(
                             "Wishlist" to "wishlist",
+                            "My Reviews" to "myUserReviews",
                             "Edit Profile" to "edit_profile",
                             "Validate delivery (Seller)" to "validate_seller",
                             "Receive & validate (Buyer)" to "validate_buyer",

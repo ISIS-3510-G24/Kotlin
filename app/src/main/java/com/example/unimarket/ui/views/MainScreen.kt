@@ -119,6 +119,18 @@ fun MainScreen(
                 composable("validate_seller") {
                     ValidateDeliveryScreen(navController = navController)
                 }
+
+                composable(
+                    "writeUserReview/{targetId}",
+                    arguments = listOf(navArgument("targetId") { type = NavType.StringType })
+                ) { back ->
+                    val target = back.arguments!!.getString("targetId")!!
+                    WriteUserRevireScreen(targetId = target, navController = navController)
+                }
+
+                composable("myUserReviews") {
+                    MyUserReviewsScreen(navController = navController)
+                }
             }
         }
     }
