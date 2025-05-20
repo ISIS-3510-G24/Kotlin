@@ -16,10 +16,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
@@ -44,8 +48,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.ImageLoader
 import coil.compose.rememberAsyncImagePainter
-import coil.disk.DiskCache
-import coil.memory.MemoryCache
 import coil.request.CachePolicy
 import com.example.unimarket.data.UniMarketDatabase
 import com.example.unimarket.data.UniMarketRepository
@@ -66,13 +68,13 @@ fun OrdersScreen(
 
     val repo = remember {
         UniMarketRepository(
-            appContext    = context,
-            productDao    = db.productDao(),
-            wishlistDao   = db.wishlistDao(),
-            orderDao      = db.orderDao(),
-            imageCacheDao = db.imageCacheDao(),
-            pendingOpDao  = db.pendingOpDao(),
-            ioDispatcher  = Dispatchers.IO
+            appContext   = context,
+            productDao   = db.productDao(),
+            wishlistDao  = db.wishlistDao(),
+            orderDao     = db.orderDao(),
+            imageCacheDao= db.imageCacheDao(),
+            pendingOpDao = db.pendingOpDao(),
+            ioDispatcher = Dispatchers.IO
         )
     }
 
@@ -81,80 +83,70 @@ fun OrdersScreen(
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(OrdersViewModel::class.java)) {
                     @Suppress("UNCHECKED_CAST")
-                    return OrdersViewModel(repo) as T
+                    return OrdersViewModel(context, repo) as T
                 }
-                throw IllegalArgumentException("Unknown ViewModel class: \$modelClass")
+                throw IllegalArgumentException("Unknown ViewModel class")
             }
         }
     }
 
-    val viewModel: OrdersViewModel = viewModel(factory = factory)
-
-    val orders     by viewModel.orders.collectAsState()
-    val currentTab by viewModel.currentTab.collectAsState()
-    val isLoading  by viewModel.isLoading.collectAsState()
-    val error      by viewModel.error.collectAsState()
-    val userId     = viewModel.getCurrentUserId()
+    val vm: OrdersViewModel = viewModel(factory = factory)
+    val orders     by vm.orders.collectAsState()
+    val currentTab by vm.currentTab.collectAsState()
+    val isLoading  by vm.isLoading.collectAsState()
+    val error      by vm.error.collectAsState()
+    val userId     = vm.getCurrentUserId()
 
     val imageLoader = remember(context) {
         ImageLoader.Builder(context)
             .diskCachePolicy(CachePolicy.ENABLED)
             .memoryCachePolicy(CachePolicy.ENABLED)
-            .memoryCache { MemoryCache.Builder(context).maxSizePercent(0.25).build() }
-            .diskCache { DiskCache.Builder().directory(context.cacheDir.resolve("image_cache")).maxSizeBytes(50L * 1024 * 1024).build() }
             .build()
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("My Orders") }) }
+        topBar = {
+            TopAppBar(
+                title = { Text("My Orders") },
+                actions = {
+                    IconButton(onClick = { vm.loadOrders() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
+                }
+            )
+        }
     ) { padding ->
-        Column(
-            Modifier
-                .padding(padding)
-                .fillMaxSize()
-        ) {
+        Column(Modifier.padding(padding)) {
             TabRow(selectedTabIndex = currentTab.ordinal) {
                 OrderTab.values().forEach { tab ->
                     Tab(
                         selected = currentTab == tab,
-                        onClick  = { viewModel.setTab(tab) },
-                        text     = { Text(tab.name.capitalize(Locale.ROOT)) }
+                        onClick  = { vm.setTab(tab) },
+                        text     = { Text(tab.name) }
                     )
                 }
             }
-
             when {
-                isLoading -> Box(
-                    Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator() }
-
-                error != null -> Box(
-                    Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) { Text(error!!, color = MaterialTheme.colorScheme.error) }
-
+                isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
+                error != null -> Box(Modifier.fillMaxSize(), Alignment.Center) { Text(error!!, color = MaterialTheme.colorScheme.error) }
                 else -> {
-                    val filtered = orders
-                        .filter { o ->
-                            when (currentTab) {
-                                OrderTab.HISTORY -> true
-                                OrderTab.BUYING  -> o.buyerID  == userId
-                                OrderTab.SELLING -> o.sellerID == userId
-                            }
+                    val filtered = orders.filter {
+                        when (currentTab) {
+                            OrderTab.HISTORY -> true
+                            OrderTab.BUYING  -> it.buyerID  == userId
+                            OrderTab.SELLING -> it.sellerID == userId
                         }
-
+                    }
                     LazyColumn(
                         contentPadding = PaddingValues(8.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(filtered) { order ->
                             OrderItem(
-                                order       = order,
+                                order = order,
                                 imageLoader = imageLoader,
                                 onCardClick = {
-                                    bottomNavController
-                                        .navigate("productDetail/${order.productId}")
+                                    bottomNavController.navigate("productDetail/${order.productId}")
                                 }
                             )
                         }
@@ -172,35 +164,24 @@ private fun OrderItem(
     onCardClick: () -> Unit
 ) {
     val fmt = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
-
     Card(
         elevation = CardDefaults.cardElevation(4.dp),
         modifier  = Modifier
             .fillMaxWidth()
             .clickable(onClick = onCardClick)
     ) {
-        Row(
-            Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(Modifier.padding(12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Image(
-                painter            = rememberAsyncImagePainter(
-                    model       = order.imageUrl,
-                    imageLoader = imageLoader
-                ),
+                painter            = rememberAsyncImagePainter(model = order.imageUrl, imageLoader = imageLoader),
                 contentDescription = null,
                 contentScale       = ContentScale.Crop,
-                modifier           = Modifier
-                    .size(64.dp)
-                    .clip(MaterialTheme.shapes.medium)
+                modifier           = Modifier.size(64.dp).clip(MaterialTheme.shapes.medium)
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(order.productTitle, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 Spacer(Modifier.height(4.dp))
-                Text("Price: $${order.price.toInt()}", fontSize = 14.sp)
+                Text("Price: \$${order.price.toInt()}", fontSize = 14.sp)
                 Spacer(Modifier.height(2.dp))
                 Text("Date: ${fmt.format(order.orderDate.toDate())}", fontSize = 12.sp)
                 Spacer(Modifier.height(2.dp))

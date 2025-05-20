@@ -1,10 +1,13 @@
 package com.example.unimarket.ui.viewmodels
 
+import android.content.Context
 import android.util.LruCache
 import androidx.collection.ArrayMap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.unimarket.data.UniMarketDatabase
 import com.example.unimarket.data.UniMarketRepository
+import com.example.unimarket.data.entities.OrderEntity
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -30,13 +33,15 @@ data class Order(
 )
 
 class OrdersViewModel(
+    context: Context,
     private val repository: UniMarketRepository
 ) : ViewModel() {
-    private val db   = FirebaseFirestore.getInstance()
-    private val auth = FirebaseAuth.getInstance()
+    private val orderDao = UniMarketDatabase.getInstance(context).orderDao()
+    private val db       = FirebaseFirestore.getInstance()
+    private val auth     = FirebaseAuth.getInstance()
 
     private val PRODUCT_CACHE_SIZE = 50
-    private val PRODUCT_CACHE_TTL  = 60
+    private val PRODUCT_CACHE_TTL  = 60 * 60_000L
 
     private val productInfoCache = object : LruCache<String, Pair<String, String>>(PRODUCT_CACHE_SIZE) {}
     private val productInfoMap   = ArrayMap<String, Pair<String, String>>()
@@ -47,7 +52,7 @@ class OrdersViewModel(
     private val _currentTab = MutableStateFlow(OrderTab.HISTORY)
     val currentTab: StateFlow<OrderTab>   = _currentTab.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(true)
+    private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean>     = _isLoading.asStateFlow()
 
     private val _error     = MutableStateFlow<String?>(null)
@@ -79,51 +84,61 @@ class OrdersViewModel(
             val snap = db.collection("orders").get().await()
             val tmp  = mutableListOf<Order>()
 
-            snap.documents.forEach { doc ->
-                val d      = doc.data ?: return@forEach
-                val buyer  = d["buyerID"]  as? String ?: return@forEach
-                val seller = d["sellerID"] as? String ?: return@forEach
-                if (buyer != uid && seller != uid) return@forEach
+            snap.documents
+                .mapNotNull { doc ->
+                    doc.data?.let { d -> d to doc.id }
+                }
+                .forEach { (d, id) ->
+                    val buyer  = d["buyerID"]  as? String ?: return@forEach
+                    val seller = d["sellerID"] as? String ?: return@forEach
+                    if (buyer != uid && seller != uid) return@forEach
 
-                val pid    = d["productID"] as? String ?: return@forEach
-                val date   = d["orderDate"]  as? Timestamp ?: Timestamp.now()
-                val price  = (d["price"]      as? Number)?.toDouble() ?: 0.0
-                val status = d["status"]     as? String ?: ""
+                    val pid    = d["productID"] as? String ?: return@forEach
+                    val date   = d["orderDate"]  as? Timestamp ?: Timestamp.now()
+                    val price  = (d["price"]      as? Number)?.toDouble() ?: 0.0
+                    val status = d["status"]     as? String ?: ""
 
-                tmp += Order(
-                    id           = doc.id,
-                    productId    = pid,
-                    buyerID      = buyer,
-                    sellerID     = seller,
-                    productTitle = "",
-                    imageUrl     = "",
-                    orderDate    = date,
-                    price        = price,
-                    status       = status
-                )
-            }
+                    tmp += Order(
+                        id           = id,
+                        productId    = pid,
+                        buyerID      = buyer,
+                        sellerID     = seller,
+                        productTitle = "",
+                        imageUrl     = "",
+                        orderDate    = date,
+                        price        = price,
+                        status       = status
+                    )
+                }
 
             val pids    = tmp.map { it.productId }.distinct()
             val toFetch = pids.filter { productInfoCache.get(it) == null }
 
             if (toFetch.isNotEmpty()) {
-                val entities = repository.getProducts(
-                    PRODUCT_CACHE_TTL * 60_000L
-                ).first()
-                entities
-                    .filter { it.id in toFetch }
-                    .forEach { entity ->
-                        val img = entity.imageUrls.firstOrNull().orEmpty()
-                        productInfoCache.put(
-                            entity.id,
-                            entity.title to img
-                        )
+                val entities = repository.getProducts(PRODUCT_CACHE_TTL).first()
+                entities.filter { it.id in toFetch }
+                    .forEach { e ->
+                        val img = e.imageUrls.firstOrNull().orEmpty()
+                        productInfoCache.put(e.id, e.title to img)
                     }
             }
 
             productInfoMap.clear()
             pids.forEach { id ->
                 productInfoCache.get(id)?.let { productInfoMap[id] = it }
+            }
+
+            tmp.forEach { order ->
+                val entity = OrderEntity(
+                    orderId = order.id,
+                    buyerId = order.buyerID,
+                    sellerId = order.sellerID,
+                    productId = order.productId,
+                    date     = order.orderDate.toDate().time,
+                    price    = order.price,
+                    status   = order.status
+                )
+                orderDao.insert(entity)
             }
 
             _orders.value = tmp.map { o ->
