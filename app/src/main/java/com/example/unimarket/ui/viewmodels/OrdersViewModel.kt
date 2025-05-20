@@ -76,7 +76,6 @@ class OrdersViewModel(
         }
 
         try {
-            // 1) Leer pedidos de Firestore
             val snap = db.collection("orders").get().await()
             val tmp  = mutableListOf<Order>()
 
