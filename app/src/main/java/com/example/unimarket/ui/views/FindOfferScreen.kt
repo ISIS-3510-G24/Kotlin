@@ -101,7 +101,7 @@ fun FindOfferScreen(
         snackbarHost = {
             if (uiState.isOffline) {
                 SnackbarHost(hostState = remember { SnackbarHostState() }) {
-                    Snackbar { Text("Offline: mostrando datos en caché") }
+                    Snackbar { Text("Offline: showing cache data") }
                 }
             }
         },

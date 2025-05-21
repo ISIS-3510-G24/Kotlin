@@ -71,6 +71,7 @@ fun OrdersScreen(
             appContext   = context,
             productDao   = db.productDao(),
             wishlistDao  = db.wishlistDao(),
+            findDao      = db.findDao(),
             orderDao     = db.orderDao(),
             imageCacheDao= db.imageCacheDao(),
             pendingOpDao = db.pendingOpDao(),
