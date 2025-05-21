@@ -1,3 +1,4 @@
+// OrdersScreen.kt
 package com.example.unimarket.ui.views
 
 import androidx.compose.foundation.Image
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,12 +36,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -54,8 +50,6 @@ import com.example.unimarket.data.UniMarketRepository
 import com.example.unimarket.ui.viewmodels.OrderTab
 import com.example.unimarket.ui.viewmodels.OrdersViewModel
 import kotlinx.coroutines.Dispatchers
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,50 +59,58 @@ fun OrdersScreen(
 ) {
     val context = LocalContext.current
     val db      = UniMarketDatabase.getInstance(context)
-
-    val repo = remember {
+    val repo    = remember {
         UniMarketRepository(
-            appContext   = context,
-            productDao   = db.productDao(),
-            wishlistDao  = db.wishlistDao(),
-            findDao      = db.findDao(),
-            orderDao     = db.orderDao(),
-            imageCacheDao= db.imageCacheDao(),
-            pendingOpDao = db.pendingOpDao(),
-            ioDispatcher = Dispatchers.IO
+            appContext    = context,
+            productDao    = db.productDao(),
+            wishlistDao   = db.wishlistDao(),
+            findDao       = db.findDao(),
+            orderDao      = db.orderDao(),
+            imageCacheDao = db.imageCacheDao(),
+            pendingOpDao  = db.pendingOpDao(),
+            ioDispatcher  = Dispatchers.IO
         )
     }
 
     val factory = remember {
         object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(OrdersViewModel::class.java)) {
-                    @Suppress("UNCHECKED_CAST")
                     return OrdersViewModel(context, repo) as T
                 }
-                throw IllegalArgumentException("Unknown ViewModel class")
+                throw IllegalArgumentException("Unknown ViewModel")
             }
         }
     }
 
     val vm: OrdersViewModel = viewModel(factory = factory)
+
+    // collect UI state
     val orders     by vm.orders.collectAsState()
     val currentTab by vm.currentTab.collectAsState()
     val isLoading  by vm.isLoading.collectAsState()
     val error      by vm.error.collectAsState()
+    val lastRef    by vm.lastRefresh.collectAsState()
     val userId     = vm.getCurrentUserId()
 
+    // Coil ImageLoader with caching
     val imageLoader = remember(context) {
         ImageLoader.Builder(context)
-            .diskCachePolicy(CachePolicy.ENABLED)
-            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy   (CachePolicy.ENABLED)
+            .memoryCachePolicy (CachePolicy.ENABLED)
             .build()
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Orders") },
+                title = {
+                    Column {
+                        Text("My Orders")
+                        Text("Last refresh: $lastRef", style = MaterialTheme.typography.labelSmall)
+                    }
+                },
                 actions = {
                     IconButton(onClick = { vm.loadOrders() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
@@ -127,29 +129,27 @@ fun OrdersScreen(
                     )
                 }
             }
+
             when {
-                isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
-                error != null -> Box(Modifier.fillMaxSize(), Alignment.Center) { Text(error!!, color = MaterialTheme.colorScheme.error) }
-                else -> {
-                    val filtered = orders.filter {
+                isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+                error != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                }
+                else -> LazyColumn(
+                    contentPadding       = PaddingValues(8.dp),
+                    verticalArrangement  = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(orders.filter {
                         when (currentTab) {
                             OrderTab.HISTORY -> true
                             OrderTab.BUYING  -> it.buyerID  == userId
                             OrderTab.SELLING -> it.sellerID == userId
                         }
-                    }
-                    LazyColumn(
-                        contentPadding = PaddingValues(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(filtered) { order ->
-                            OrderItem(
-                                order = order,
-                                imageLoader = imageLoader,
-                                onCardClick = {
-                                    bottomNavController.navigate("productDetail/${order.productId}")
-                                }
-                            )
+                    }) { order ->
+                        OrderItem(order, imageLoader) {
+                            bottomNavController.navigate("productDetail/${order.productId}")
                         }
                     }
                 }
@@ -164,29 +164,24 @@ private fun OrderItem(
     imageLoader: ImageLoader,
     onCardClick: () -> Unit
 ) {
-    val fmt = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
     Card(
-        elevation = CardDefaults.cardElevation(4.dp),
         modifier  = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onCardClick)
+            .clickable(onClick = onCardClick),
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Row(Modifier.padding(12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Image(
-                painter            = rememberAsyncImagePainter(model = order.imageUrl, imageLoader = imageLoader),
+                painter            = rememberAsyncImagePainter(order.imageUrl, imageLoader),
                 contentDescription = null,
-                contentScale       = ContentScale.Crop,
-                modifier           = Modifier.size(64.dp).clip(MaterialTheme.shapes.medium)
+                modifier           = Modifier.size(64.dp)
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(order.productTitle, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Spacer(Modifier.height(4.dp))
-                Text("Price: \$${order.price.toInt()}", fontSize = 14.sp)
-                Spacer(Modifier.height(2.dp))
-                Text("Date: ${fmt.format(order.orderDate.toDate())}", fontSize = 12.sp)
-                Spacer(Modifier.height(2.dp))
-                Text("Status: ${order.status}", fontSize = 14.sp)
+                Text(order.productTitle, style = MaterialTheme.typography.titleMedium)
+                Text("Price: \$${order.price.toInt()}")
+                Text("Date: ${order.orderDate.toDate()}")
+                Text("Status: ${order.status}")
             }
         }
     }

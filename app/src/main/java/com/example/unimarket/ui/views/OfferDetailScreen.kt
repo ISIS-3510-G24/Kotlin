@@ -66,15 +66,15 @@ fun OfferDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(detail?.title ?: "Detalle") },
+                title = { Text(detail?.title ?: "Detail") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Atrás")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.refresh() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refrescar")
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
                 }
             )
@@ -93,7 +93,7 @@ fun OfferDetailScreen(
 
                 detail == null -> {
                     Text(
-                        text = "No se encontró detalle.",
+                        text = "The find has not been found.",
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -107,7 +107,6 @@ fun OfferDetailScreen(
                             .verticalScroll(rememberScrollState())
                             .padding(16.dp)
                     ) {
-                        // Banner offline
                         if (offline) {
                             Box(
                                 Modifier
@@ -115,12 +114,11 @@ fun OfferDetailScreen(
                                     .background(Color(0xFFFFF4E5))
                                     .padding(8.dp)
                             ) {
-                                Text("Sin conexión: datos de caché", color = Color(0xFF795548))
+                                Text("No connection: data from cache", color = Color(0xFF795548))
                             }
                             Spacer(Modifier.height(16.dp))
                         }
 
-                        // Imagen (primera URL) o placeholder
                         val imageUrl = currentDetail.image.firstOrNull().orEmpty()
                         if (imageUrl.isNotBlank()) {
                             Image(

@@ -1,4 +1,3 @@
-// FindDetailViewModel.kt
 package com.example.unimarket.ui.viewmodels
 
 import android.app.Application
