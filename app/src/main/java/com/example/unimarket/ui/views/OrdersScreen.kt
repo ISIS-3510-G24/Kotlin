@@ -94,7 +94,7 @@ fun OrdersScreen(
     val lastRef    by vm.lastRefresh.collectAsState()
     val userId     = vm.getCurrentUserId()
 
-    // Coil ImageLoader with caching
+    // Coil ImageLoader with caching = Strategy 1
     val imageLoader = remember(context) {
         ImageLoader.Builder(context)
             .diskCachePolicy   (CachePolicy.ENABLED)
@@ -147,6 +147,7 @@ fun OrdersScreen(
                             OrderTab.BUYING  -> it.buyerID  == userId
                             OrderTab.SELLING -> it.sellerID == userId
                         }
+                        // Strategy 2
                     }) { order ->
                         OrderItem(order, imageLoader) {
                             bottomNavController.navigate("productDetail/${order.productId}")

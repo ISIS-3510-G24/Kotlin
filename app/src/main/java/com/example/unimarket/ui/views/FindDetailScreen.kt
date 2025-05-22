@@ -63,10 +63,12 @@ fun FindDetailScreen(
     val error   by viewModel.error.collectAsState()
     val snack   = remember { SnackbarHostState() }
 
+    // Strategy 2
     LaunchedEffect(error) {
         error?.let { snack.showSnackbar(it) }
     }
 
+    // Strategy 2
     Scaffold(
         topBar = {
             TopAppBar(
@@ -91,6 +93,7 @@ fun FindDetailScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
+            // Strategy 2
             if (offline) {
                 Box(
                     Modifier

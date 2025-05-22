@@ -55,14 +55,14 @@ class OrdersViewModel(
     private val repository: UniMarketRepository
 ) : ViewModel() {
 
-    // ROOM DAO
+    // ROOM DAO Strategy 3
     private val orderDao = UniMarketDatabase.getInstance(context).orderDao()
     // Firebase
     private val db   = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private val gson = Gson()
 
-    // In-memory LRU cache for product info
+    // In-memory LRU cache for product info = Strategy 1
     private val PRODUCT_CACHE_SIZE = 50
     private val PRODUCT_CACHE_TTL  = 60 * 60_000L
     private val productInfoCache = object : androidx.collection.LruCache<String, Pair<String,String>>(PRODUCT_CACHE_SIZE) {}
@@ -94,7 +94,7 @@ class OrdersViewModel(
         .stateIn(viewModelScope, SharingStarted.Eagerly, "…")
 
     init {
-        // Restore last-tab (nested coroutine: DataStore IO + update on Main)
+        // Restore last-tab (nested coroutine: DataStore IO + update on Main) = Strategy 3
         viewModelScope.launch {
             prefs.data
                 .map { it[stringPreferencesKey("last_tab")] }
@@ -118,13 +118,7 @@ class OrdersViewModel(
         }
     }
 
-    /**
-     * Load orders from Firestore, cache in Room + JSON file + DataStore timestamp.
-     * Demonstrates:
-     * 1) coroutine on IO dispatcher
-     * 2) nested coroutines (async + withContext)
-     * 3) switching back to Main for UI updates
-     */
+    // Strategy 4
     fun loadOrders() = viewModelScope.launch(Dispatchers.IO) {
         _isLoading.value = true
         _error.value     = null
@@ -140,7 +134,7 @@ class OrdersViewModel(
         val cacheFile = File(context.filesDir, "orders_cache.json")
 
         try {
-            // 1) Fetch list of order docs (IO)
+            // Fetch list of order docs (IO)
             val snap = db.collection("orders").get().await()
             val tmp  = mutableListOf<Order>()
             snap.documents.mapNotNull { doc -> doc.data?.let { it to doc.id } }
@@ -161,11 +155,12 @@ class OrdersViewModel(
                     )
                 }
 
-            // 2) Nested coroutine: fetch missing product info in parallel
+            // Nested coroutine: fetch missing product info in parallel
             val toFetch = tmp.map { it.productId }.distinct().filter { productInfoCache[it] == null }
             if (toFetch.isNotEmpty()) {
                 // launch async fetch on IO again
                 val deferred = toFetch.map { pid ->
+                    // Strategy 4
                     async {
                         repository.getProductByIdCached(pid, PRODUCT_CACHE_TTL).first()
                     }
@@ -183,7 +178,7 @@ class OrdersViewModel(
                 productInfoCache.get(pid)?.let { productInfoMap[pid] = it }
             }
 
-            // 3) Persist each order in Room (IO)
+            // Persist each order in Room (IO)
             tmp.forEach { o ->
                 orderDao.insert(OrderEntity(
                     orderId  = o.id,
@@ -196,7 +191,7 @@ class OrdersViewModel(
                 ))
             }
 
-            // 4) Back to Main for final UI update
+            // Back to Main for final UI update = Strategy 4
             withContext(Dispatchers.Main) {
                 val finalList = tmp.map { o ->
                     val (t,img) = productInfoMap[o.productId] ?: ("" to "")
@@ -204,7 +199,7 @@ class OrdersViewModel(
                 }.sortedByDescending { it.orderDate.toDate() }
                 _orders.value = finalList
 
-                // write JSON cache (IO—but small file)
+                // write JSON cache (IO—but small file) = Strategy 3
                 cacheFile.writeText(gson.toJson(finalList))
 
                 // persist last refresh
