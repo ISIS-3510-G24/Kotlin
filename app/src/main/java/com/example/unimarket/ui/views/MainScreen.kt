@@ -125,7 +125,7 @@ fun MainScreen(
                     arguments = listOf(navArgument("targetId") { type = NavType.StringType })
                 ) { back ->
                     val target = back.arguments!!.getString("targetId")!!
-                    WriteUserRevireScreen(targetId = target, navController = navController)
+                    WriteUserReviewScreen(targetId = target, navController = navController)
                 }
 
                 composable("myUserReviews") {
