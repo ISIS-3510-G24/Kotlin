@@ -1,12 +1,18 @@
 package com.example.unimarket.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.unimarket.data.UniMarketRepository
+import com.example.unimarket.di.IoDispatcher
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FieldPath
-import com.google.firebase.firestore.FirebaseFirestore
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class WishlistItem(
     val productId: String,
@@ -14,85 +20,46 @@ data class WishlistItem(
     val description: String,
     val imageUrl: String,
     val price: Long,
-    val available: Boolean
+    val available: Boolean,
 )
 
-class WishlistViewModel : ViewModel() {
-    private val firestore = FirebaseFirestore.getInstance()
-    private val auth = FirebaseAuth.getInstance()
+@HiltViewModel
+class WishlistViewModel @Inject constructor(
+    private val repo: UniMarketRepository,
+    @IoDispatcher private val io: CoroutineDispatcher,
+    private val auth: FirebaseAuth,
+) : ViewModel() {
+    private val _items = MutableStateFlow<List<WishlistItem>>(emptyList())
+    val wishListItems: StateFlow<List<WishlistItem>> = _items.asStateFlow()
 
-    private val _wishlistItems = MutableStateFlow<List<WishlistItem>>(emptyList())
-    val wishlistItems: StateFlow<List<WishlistItem>> = _wishlistItems.asStateFlow()
-
-    private val _loading = MutableStateFlow(false)
-    val loading: StateFlow<Boolean> = _loading.asStateFlow()
-
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
+    companion object {
+        private const val DEFAULT_CACHE_TTL_MS = 300_000L
+    }
 
     init {
-        fetchWishlist()
-    }
-
-    fun fetchWishlist() {
-        val userId = auth.currentUser?.uid ?: return
-        _loading.value = true
-        _error.value = null
-
-        firestore.collection("User")
-            .document(userId)
-            .collection("wishlist")
-            .get()
-            .addOnSuccessListener { wishDocs ->
-                val productIds = wishDocs.documents.map { it.id }.toSet()
-                if (productIds.isEmpty()) {
-                    _wishlistItems.value = emptyList()
-                    _loading.value = false
-                    return@addOnSuccessListener
+        viewModelScope.launch(io) {
+            repo.getWishlistProducts(DEFAULT_CACHE_TTL_MS)
+                .map { entities ->
+                    entities.map { e->
+                        WishlistItem(
+                            productId = e.id,
+                            title = e.title,
+                            description = e.description,
+                            imageUrl = e.imageUrls.firstOrNull().orEmpty(),
+                            price = e.price.toLong(),
+                            available = e.status.equals("Available", true)
+                        )
+                    }
                 }
-                firestore.collection("Product")
-                    .whereIn(FieldPath.documentId(), productIds.toList())
-                    .get()
-                    .addOnSuccessListener { prodDocs ->
-                        val items = prodDocs.documents.mapNotNull { doc ->
-                            val id = doc.id
-                            val title = doc.getString("title") ?: return@mapNotNull null
-                            val desc = doc.getString("description") ?: ""
-                            val price = doc.getDouble("price")?.toLong() ?: 0L
-                            val urlList = doc.get("imageUrls") as? List<*>
-                            val img = (urlList?.firstOrNull() as? String).orEmpty()
-                            val status = doc.getString("status") ?: ""
-                            WishlistItem(
-                                productId = id,
-                                title = title,
-                                description = desc,
-                                imageUrl = img,
-                                price = price,
-                                available = status.equals("Available", true)
-                            )
-                        }
-                        _wishlistItems.value = items
-                        _loading.value = false
-                    }
-                    .addOnFailureListener { ex ->
-                        _error.value = "Error loading products: ${ex.localizedMessage}"
-                        _loading.value = false
-                    }
-            }
-            .addOnFailureListener { ex ->
-                _error.value = "Error loading wishlist: ${ex.localizedMessage}"
-                _loading.value = false
-            }
+                .collect { _items.value = it }
+        }
     }
+
+
 
     fun removeFromWishlist(productId: String) {
-        val userId = auth.currentUser?.uid ?: return
-        firestore.collection("User")
-            .document(userId)
-            .collection("wishlist")
-            .document(productId)
-            .delete()
-            .addOnSuccessListener { fetchWishlist() }
-            .addOnFailureListener { ex -> _error.value = "Failed to remove: ${ex.localizedMessage}" }
+        viewModelScope.launch(io) {
+            repo.toggleWishlist(auth.currentUser!!.uid, productId)
+        }
     }
 }

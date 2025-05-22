@@ -109,8 +109,7 @@ fun OrdersScreen(
                             OrderItem(
                                 order        = order,
                                 onCardClick  = {
-                                    // navega a ProductDetailScreen
-                                    navController.navigate("productDetail/${order.productId}")
+                                    bottomNavController.navigate("productDetail/${order.productId}")
                                 },
                             )
                         }

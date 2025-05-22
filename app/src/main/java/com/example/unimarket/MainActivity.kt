@@ -18,13 +18,16 @@ import androidx.navigation.navArgument
 import com.example.unimarket.data.PreferencesManager
 import com.example.unimarket.ui.theme.UniMarketTheme
 import com.example.unimarket.ui.viewmodels.FindDetailViewModel
+import com.example.unimarket.ui.viewmodels.OfferDetailViewModel
 import com.example.unimarket.ui.viewmodels.ProductDetailViewModel
 import com.example.unimarket.ui.views.FindDetailScreen
 import com.example.unimarket.ui.views.LoginScreen
 import com.example.unimarket.ui.views.MainScreen
+import com.example.unimarket.ui.views.OfferDetailScreen
 import com.example.unimarket.ui.views.OnboardingScreen
 import com.example.unimarket.ui.views.PersonalizationScreen
 import com.example.unimarket.ui.views.ProductDetailScreen
+import com.example.unimarket.ui.views.PublishProductScreen
 import com.example.unimarket.ui.views.RegisterScreen
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.AndroidEntryPoint
@@ -139,5 +142,20 @@ fun AppNavigation() {
                 viewModel = findDetailVm
             )
         }
+        composable(
+            route = "offerDetail/{findId}",
+            arguments = listOf(navArgument("findId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val offerDetailVm: OfferDetailViewModel =
+                viewModel(viewModelStoreOwner = backStackEntry)
+            OfferDetailScreen(
+                navController = navController,
+                viewModel = offerDetailVm
+            )
+        }
+        composable("publishProduct") {
+            PublishProductScreen(navController)
+        }
+
     }
 }
