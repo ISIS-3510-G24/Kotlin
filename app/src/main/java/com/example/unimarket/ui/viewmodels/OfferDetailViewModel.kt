@@ -74,15 +74,20 @@ class OfferDetailViewModel(
                     .await()
 
                 if (!doc.exists()) {
-                    _error.value = "Ítem no encontrado."
+                    _error.value = "Ítem not found."
                 } else {
                     val now = System.currentTimeMillis()
 
-                    val rawImages = when {
-                        doc.contains("imageUrls") -> doc.get("imageUrls") as? List<String>
-                        doc.contains("images")    -> doc.get("images")    as? List<String>
-                        else                      -> doc.get("image")     as? List<String>
-                    } ?: emptyList()
+                    val rawImages: List<String> = when {
+                        doc.contains("imageUrls") -> (doc.get("imageUrls") as? List<String>) ?: emptyList()
+                        doc.contains("images")    -> (doc.get("images")    as? List<String>) ?: emptyList()
+                        doc.contains("image")     -> when (val v = doc.get("image")) {
+                            is List<*>  -> v.filterIsInstance<String>()
+                            is String  -> listOf(v)
+                            else       -> emptyList()
+                        }
+                        else -> emptyList()
+                    }
 
                     Log.d("OfferDetailVM", "rawImages=$rawImages")
 
@@ -102,7 +107,7 @@ class OfferDetailViewModel(
                     findDao.insert(ent)
                 }
             } catch (e: Exception) {
-                _error.value = "Error cargando: ${e.message}"
+                _error.value = "Error loading: ${e.message}"
             } finally {
                 _isLoading.value = false
             }

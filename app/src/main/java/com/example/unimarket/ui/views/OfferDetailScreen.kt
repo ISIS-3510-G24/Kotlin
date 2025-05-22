@@ -82,7 +82,7 @@ fun OfferDetailScreen(
         snackbarHost = { SnackbarHost(hostState = snackBar) }
     ) { padding ->
         Box(
-            modifier = Modifier
+            Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
@@ -90,19 +90,17 @@ fun OfferDetailScreen(
                 loading -> {
                     CircularProgressIndicator(Modifier.align(Alignment.Center))
                 }
-
                 detail == null -> {
                     Text(
-                        text = "The find has not been found.",
-                        modifier = Modifier.align(Alignment.Center)
+                        "The find has not been found.",
+                        Modifier.align(Alignment.Center)
                     )
                 }
-
                 else -> {
-                    val currentDetail = detail ?: return@Scaffold
+                    val current = detail!!
 
                     Column(
-                        modifier = Modifier
+                        Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                             .padding(16.dp)
@@ -119,11 +117,11 @@ fun OfferDetailScreen(
                             Spacer(Modifier.height(16.dp))
                         }
 
-                        val imageUrl = currentDetail.image.firstOrNull().orEmpty()
+                        val imageUrl = current.image.firstOrNull().orEmpty()
                         if (imageUrl.isNotBlank()) {
                             Image(
                                 painter = rememberAsyncImagePainter(imageUrl),
-                                contentDescription = currentDetail.title,
+                                contentDescription = current.title,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(300.dp)
@@ -144,22 +142,22 @@ fun OfferDetailScreen(
 
                         Spacer(Modifier.height(16.dp))
 
-                        Text(currentDetail.title, style = MaterialTheme.typography.headlineSmall)
+                        Text(current.title, style = MaterialTheme.typography.headlineSmall)
                         Spacer(Modifier.height(8.dp))
-                        Text("Major: ${currentDetail.major}", style = MaterialTheme.typography.bodyMedium)
+                        Text("Major: ${current.major}", style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            "User: ${currentDetail.userName.ifBlank { "Anonymous" }}",
+                            "User: ${current.userName.ifBlank { "Anonymous" }}",
                             style = MaterialTheme.typography.bodyMedium
                         )
 
-                        if (currentDetail.labels.isNotEmpty()) {
+                        if (current.labels.isNotEmpty()) {
                             Spacer(Modifier.height(12.dp))
                             Text("Labels:", fontWeight = FontWeight.Bold)
                             FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                currentDetail.labels.forEach { lbl ->
+                                current.labels.forEach { lbl ->
                                     AssistChip(onClick = {}, label = { Text(lbl) })
                                 }
                             }
@@ -167,7 +165,7 @@ fun OfferDetailScreen(
 
                         Spacer(Modifier.height(12.dp))
                         Text("Description:", fontWeight = FontWeight.Bold)
-                        Text(currentDetail.description)
+                        Text(current.description)
 
                         Spacer(Modifier.height(24.dp))
 
