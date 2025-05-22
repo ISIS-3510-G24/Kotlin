@@ -1,4 +1,3 @@
-// FindOfferScreen.kt
 package com.example.unimarket.ui.views
 
 import androidx.compose.foundation.Image
@@ -22,32 +21,42 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
@@ -60,92 +69,127 @@ import kotlinx.coroutines.launch
 @Composable
 fun FindOfferScreen(
     navController: NavController,
-    bottomNavController: NavController,
-    viewModel: FindOfferViewModel = viewModel()
+    bottomNavController: NavController
 ) {
-    val uiState        by viewModel.uiState.collectAsState()
-    val items          = uiState.findList
-    val currentMajor   = uiState.userMajor
-    val showBanner     = uiState.showGreetingBanner
-    val isSearching    = uiState.isSearchVisible
-    val searchText     = uiState.searchText
+    val context = LocalContext.current
+    val viewModel: FindOfferViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return FindOfferViewModel(context) as T
+            }
+        }
+    )
 
-    val scrollState    = rememberScrollState()
+    val uiState     by viewModel.uiState.collectAsState()
+    val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
 
-    Box(Modifier.fillMaxSize()) {
-        Column(
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Find & Offer") },
+                actions = {
+                    IconButton(onClick = {
+                        viewModel.refreshAll()
+                    }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
+                }
+            )
+        },
+        snackbarHost = {
+            if (uiState.isOffline) {
+                SnackbarHost(hostState = remember { SnackbarHostState() }) {
+                    Snackbar { Text("Offline: showing cache data") }
+                }
+            }
+        },
+        floatingActionButton = {
+            if (scrollState.value > 0) {
+                FloatingActionButton(
+                    onClick = { coroutineScope.launch { scrollState.animateScrollTo(0) } },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Icon(Icons.Filled.ArrowUpward, contentDescription = "Scroll to top")
+                }
+            }
+        }
+    ) { padding ->
+        Box(
             Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .verticalScroll(scrollState)
-                .padding(top = if (showBanner) 100.dp else 0.dp)
+                .padding(padding)
         ) {
-            TopBarWithSearch(
-                isSearchVisible = isSearching,
-                searchText      = searchText,
-                onSearchClick   = viewModel::onSearchClick,
-                onTextChange    = viewModel::onTextChange,
-                onClearSearch   = viewModel::onClearSearch,
-                onNewFindClick  = { bottomNavController.navigate("publishFind") }
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            LazyRow(
-                contentPadding       = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(listOf(
-                    "ALL REQUESTS","MATERIALS","TECHNOLOGY",
-                    "SPORTS","BOOKS","MUSICAL INSTRUMENTS",
-                    "SUITS","TOYS"
-                )) { cat ->
-                    Text(
-                        text  = cat,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
+            if (uiState.isLoading) {
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .background(Color(0x88000000)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
-
-            SectionTitle("All")
-            SectionRow(
-                items        = items,
-                onFindClick  = { id -> navController.navigate("findDetail/$id") },
-                onOfferClick = { id -> navController.navigate("offerDetail/$id") }
-            )
-
-            SectionTitle("From Your Major")
-            SectionColumn(
-                items   = items.filter { it.major == currentMajor },
-                onClick = { id -> navController.navigate("offerDetail/$id") }
-            )
-
-            SectionTitle("Selling out")
-            SectionColumn(
-                items   = items.filter { it.status == "active" },
-                onClick = { id -> navController.navigate("findDetail/$id") }
-            )
-
-            Spacer(Modifier.height(80.dp))
-        }
-
-        if (scrollState.value > 0) {
-            FloatingActionButton(
-                onClick        = { coroutineScope.launch { scrollState.animateScrollTo(0) } },
-                containerColor = MaterialTheme.colorScheme.primary,
-                modifier       = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp)
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .verticalScroll(scrollState)
+                    .padding(top = if (uiState.showGreetingBanner) 100.dp else 0.dp)
             ) {
-                Icon(
-                    Icons.Filled.ArrowUpward,
-                    contentDescription = "Scroll to top",
-                    tint = Color.White
+                TopBarWithSearch(
+                    isSearchVisible = uiState.isSearchVisible,
+                    searchText      = uiState.searchText,
+                    onSearchClick   = viewModel::onSearchClick,
+                    onTextChange    = viewModel::onTextChange,
+                    onClearSearch   = viewModel::onClearSearch,
+                    onNewFindClick  = { bottomNavController.navigate("publishFind") }
                 )
+
+                Spacer(Modifier.height(12.dp))
+
+                LazyRow(
+                    contentPadding       = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(listOf(
+                        "ALL REQUESTS","MATERIALS","TECHNOLOGY",
+                        "SPORTS","BOOKS","MUSICAL INSTRUMENTS",
+                        "SUITS","TOYS"
+                    )) { cat ->
+                        Text(
+                            text  = cat,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                SectionTitle("All")
+                SectionRow(
+                    items        = uiState.findList.filter { it.title.contains(uiState.searchText, ignoreCase = true) },
+                    onFindClick  = { id -> navController.navigate("findDetail/$id") },
+                    onOfferClick = { id -> navController.navigate("offerDetail/$id") }
+                )
+
+                SectionTitle("From Your Major")
+                SectionColumn(
+                    items   = uiState.findList.filter { it.major == uiState.userMajor },
+                    onClick = { id -> navController.navigate("offerDetail/$id") }
+                )
+
+                SectionTitle("Selling out")
+                SectionColumn(
+                    items   = uiState.findList.filter { it.status == "active" },
+                    onClick = { id -> navController.navigate("findDetail/$id") }
+                )
+
+                Spacer(Modifier.height(80.dp))
             }
         }
     }
@@ -193,7 +237,7 @@ private fun TopBarWithSearch(
                         )
                 )
                 IconButton(onClick = onClearSearch) {
-                    Icon(Icons.Filled.Close, contentDescription = "Clear")
+                    Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "Clear")
                 }
             }
         }
@@ -239,7 +283,7 @@ fun FindCard(
     onOfferClick: () -> Unit
 ) {
     Card(
-        onClick = onFindClick,
+        onClick  = onFindClick,
         modifier = Modifier
             .width(260.dp)
             .wrapContentHeight(),
