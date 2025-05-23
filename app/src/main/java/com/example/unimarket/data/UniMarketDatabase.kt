@@ -24,13 +24,13 @@ import com.example.unimarket.data.entities.WishlistEntity
     entities = [
         ProductEntity::class,
         WishlistEntity::class,
-        FindEntity:: class,
+        FindEntity::class,
         OrderEntity::class,
         ImageCacheEntity::class,
         PendingOpEntity::class,
         UserReviewEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -44,7 +44,8 @@ abstract class UniMarketDatabase : RoomDatabase() {
     abstract fun userReviewDao(): UserReviewDao
 
     companion object {
-        @Volatile private var INSTANCE: UniMarketDatabase? = null
+        @Volatile
+        private var INSTANCE: UniMarketDatabase? = null
 
         fun getInstance(context: Context): UniMarketDatabase =
             INSTANCE ?: synchronized(this) {
