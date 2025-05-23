@@ -112,11 +112,15 @@ fun MainScreen(
                 }
 
                 composable(
-                    "writeUserReview/{targetId}",
-                    arguments = listOf(navArgument("targetId") { type = NavType.StringType })
+                    "writeUserReview/{orderId}/{targetId}",
+                    arguments = listOf(
+                        navArgument("orderId") { type = NavType.StringType },
+                        navArgument("targetId") { type = NavType.StringType }
+                    )
                 ) { back ->
+                    val orderId = back.arguments!!.getString("orderId")!!
                     val target = back.arguments!!.getString("targetId")!!
-                    WriteUserReviewScreen(targetId = target, navController = navController)
+                    WriteUserReviewScreen(orderId = orderId, targetId = target, navController = navController)
                 }
 
                 composable("myUserReviews") {

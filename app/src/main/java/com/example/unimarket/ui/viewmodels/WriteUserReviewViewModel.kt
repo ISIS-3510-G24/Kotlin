@@ -18,12 +18,13 @@ class WriteUserReviewViewModel @Inject constructor(
 ): ViewModel() {
     private val me = auth.currentUser!!.uid
     fun submitReview(
-        target: String,
+        orderId: String,
+        targetId: String,
         rating: Int,
         comment: String
     ) {
         viewModelScope.launch(io) {
-            repo.postUserReview(me, target, rating, comment)
+            repo.postUserReview(me, targetId, orderId, rating, comment)
         }
     }
 }

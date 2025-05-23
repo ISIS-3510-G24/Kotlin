@@ -36,6 +36,7 @@ import kotlinx.coroutines.tasks.await
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WriteUserReviewScreen(
+    orderId: String,
     targetId: String,
     navController: NavController,
     viewModel: WriteUserReviewViewModel = hiltViewModel()
@@ -97,7 +98,7 @@ fun WriteUserReviewScreen(
 
                     Button(
                         onClick  = {
-                            viewModel.submitReview(targetId, rating, comment)
+                            viewModel.submitReview(orderId, targetId, rating, comment)
                             navController.popBackStack()
                         },
                         modifier = Modifier.align(Alignment.End)

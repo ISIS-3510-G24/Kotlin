@@ -33,6 +33,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -95,10 +96,14 @@ fun OrdersScreen(
     val isLoading by vm.isLoading.collectAsState()
     val error by vm.error.collectAsState()
     val lastRef by vm.lastRefresh.collectAsState()
-    val userId = vm.getCurrentUserId()!!
-    val myReviews by repo.observeUserReviewsFor(userId).collectAsState(initial = emptyList())
-    val reviewedSet = remember(myReviews) {
-        myReviews.map { it.targetUserId }.toSet()
+    val userId by remember { mutableStateOf(vm.getCurrentUserId()!!) }
+
+    val myWrittenReviews by repo
+        .observeReviewsByReviewer(userId)
+        .collectAsState(initial = emptyList())
+
+    val reviewedSet = remember(myWrittenReviews) {
+        myWrittenReviews.map { it.orderId }.toSet()
     }
 
     // Coil ImageLoader with caching = Strategy 1
@@ -150,26 +155,33 @@ fun OrdersScreen(
                     contentPadding = PaddingValues(8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(orders.filter {
+                    items(
+                        orders.filter { order ->
                         when (currentTab) {
                             OrderTab.HISTORY -> true
-                            OrderTab.BUYING -> it.buyerID == userId
-                            OrderTab.SELLING -> it.sellerID == userId
+                            OrderTab.BUYING -> order.buyerID == userId
+                            OrderTab.SELLING -> order.sellerID == userId
                         }
                         // Strategy 2
-                    }) { order ->
+                    }
+                    ) { order ->
+                        val target = if (order.buyerID == userId) order.sellerID else order.buyerID
+
+                        val canReview = order.id !in reviewedSet
+
                         OrderItem(
                             order = order,
                             imageLoader = imageLoader,
                             currentUserId = userId,
+                            canReview = canReview,
                             onCardClick = {
                                 // Navigate to product detail screen
                                 bottomNavController
                                     .navigate("productDetail/${order.productId}")
                             },
-                            onReviewClick = { targetId ->
+                            onReviewClick = {
                                 bottomNavController
-                                    .navigate("writeUserReview/$targetId")
+                                    .navigate("writeUserReview/${order.id}/$target")
                             }
                         )
                     }
@@ -184,52 +196,61 @@ fun OrdersScreen(
 private fun OrderItem(
     order: com.example.unimarket.ui.viewmodels.Order,
     imageLoader: ImageLoader,
-    currentUserId: String?,
+    currentUserId: String,
+    canReview: Boolean,
     onCardClick: () -> Unit,
-    onReviewClick: (String) -> Unit,
+    onReviewClick: () -> Unit,
 ) {
     val fmt = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
 
     Card(
-        modifier = Modifier
+        modifier  = Modifier
             .fillMaxWidth()
             .clickable(onClick = onCardClick),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Row(
-            Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                painter = rememberAsyncImagePainter(order.imageUrl, imageLoader),
-                contentDescription = null,
-                modifier = Modifier.size(64.dp)
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(order.productTitle,
-                    style = MaterialTheme.typography.titleMedium)
-                Text("Price: \$${order.price.toInt()}")
-                Text("Date: ${order.orderDate.toDate()}")
-                Text("Status: ${order.status}")
+        Column {
+            Row(
+                Modifier
+                    .padding(12.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    painter            = rememberAsyncImagePainter(order.imageUrl, imageLoader),
+                    contentDescription = null,
+                    modifier           = Modifier.size(64.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(order.productTitle, style = MaterialTheme.typography.titleMedium)
+                    Text("Price: \$${order.price.toInt()}")
+                    Text("Date: ${fmt.format(order.orderDate.toDate())}")
+                    Text("Status: ${order.status}")
+                }
             }
-        }
 
-        Row(
-            Modifier
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Spacer(Modifier.weight(1f))
-            TextButton(onClick = {
-                val target = if (order.buyerID == currentUserId)
-                    order.sellerID else order.buyerID
-                onReviewClick(target)
-            }) {
-                Text("Write Review")
+            if (canReview) {
+                Row(
+                    Modifier
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = onReviewClick) {
+                        Text("Write Review")
+                    }
+                }
+            } else {
+                Text(
+                    "Already reviewed this order",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .fillMaxWidth()
+                )
             }
         }
     }

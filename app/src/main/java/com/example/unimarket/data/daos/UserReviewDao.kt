@@ -17,13 +17,19 @@ interface UserReviewDao {
     fun observeForUser(uid: String): Flow<List<UserReviewEntity>>
 
     @Query("""
+        SELECT * FROM user_reviews
+        WHERE reviewerUserId = :reviewer
+    """)
+    fun observeByReviewer(reviewer: String): Flow<List<UserReviewEntity>>
+
+    @Query("""
     SELECT EXISTS(
       SELECT 1 FROM user_reviews 
        WHERE reviewerUserId = :reviewer 
-         AND targetUserId   = :target
+         AND orderId   = :orderId
     )
   """)
-    fun hasReviewed(reviewer: String, target: String): Flow<Boolean>
+    fun hasReviewedOrder(reviewer: String, orderId: String): Flow<Boolean>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(review: UserReviewEntity)

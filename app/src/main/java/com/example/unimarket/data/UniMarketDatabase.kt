@@ -30,7 +30,7 @@ import com.example.unimarket.data.entities.WishlistEntity
         PendingOpEntity::class,
         UserReviewEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

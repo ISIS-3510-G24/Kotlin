@@ -164,7 +164,7 @@ class SyncWorker(
                     try {
                         val p = gson.fromJson(op.payload, Map::class.java)
                         val target = p["targetUserId"] as String
-                        firestore.collection("users")
+                        firestore.collection("User")
                             .document(target)
                             .collection("reviews")
                             .add(mapOf(

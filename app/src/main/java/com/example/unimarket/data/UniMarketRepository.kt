@@ -297,15 +297,23 @@ class UniMarketRepository(
     fun observeUserReviewsFor(uid: String) =
         userReviewDao.observeForUser(uid)
 
+    fun observeReviewsByReviewer(reviewerId: String): Flow<List<UserReviewEntity>> =
+        userReviewDao.observeByReviewer(reviewerId)
+
+    fun hasReviewedOrder(reviewerId: String, orderId: String): Flow<Boolean> =
+        userReviewDao.hasReviewedOrder(reviewerId, orderId)
+
     suspend fun postUserReview(
         reviewerId: String,
         targetId: String,
+        orderId: String,
         rating: Int,
         comment: String,
     ) {
         val now = System.currentTimeMillis()
         userReviewDao.insert(
             UserReviewEntity(
+                orderId = orderId,
                 targetUserId = targetId,
                 reviewerUserId = reviewerId,
                 rating = rating,

@@ -6,6 +6,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "user_reviews")
 data class UserReviewEntity(
     @PrimaryKey(autoGenerate = true) val localId: Long = 0,
+    val orderId: String,
     val targetUserId: String,
     val reviewerUserId: String,
     val rating: Int,
