@@ -19,6 +19,7 @@ import com.example.unimarket.data.entities.UserReviewEntity
 import com.example.unimarket.data.entities.WishlistEntity
 import com.example.unimarket.di.IoDispatcher
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
 import com.google.firebase.storage.FirebaseStorage
@@ -278,8 +279,8 @@ class UniMarketRepository(
                     "labels" to payload.labels,
                     "imageUrls" to listOf(downloadUrl),
                     "status" to payload.status,
-                    "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
-                    "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                    "createdAt" to FieldValue.serverTimestamp(),
+                    "updatedAt" to FieldValue.serverTimestamp()
                 )
                 firestore.collection("Product")
                     .add(map)
@@ -311,28 +312,31 @@ class UniMarketRepository(
         comment: String,
     ) {
         val now = System.currentTimeMillis()
-        userReviewDao.insert(
-            UserReviewEntity(
-                orderId = orderId,
-                targetUserId = targetId,
-                reviewerUserId = reviewerId,
-                rating = rating,
-                comment = comment,
-                createdAt = now,
-                status = "PENDING"
+
+        val localId =
+            userReviewDao.insert(
+                UserReviewEntity(
+                    orderId = orderId,
+                    targetUserId = targetId,
+                    reviewerUserId = reviewerId,
+                    rating = rating,
+                    comment = comment,
+                    createdAt = now,
+                    status = "PENDING"
+                )
             )
-        )
 
         pendingOpDao.insert(
             PendingOpEntity(
                 type = "USER_REVIEW",
                 payload = gson.toJson(
                     mapOf(
+                        "localId" to localId,
                         "targetUserId" to targetId,
                         "reviewerUserId" to reviewerId,
+                        "orderId" to orderId,
                         "rating" to rating,
                         "comment" to comment,
-                        "createdAt" to now
                     )
                 ),
                 createdAt = now
@@ -456,6 +460,28 @@ class UniMarketRepository(
         )
         emit(entity)
     }.flowOn(ioDispatcher)
+
+    suspend fun postUserReviewImmediate(
+        reviewerId: String,
+        targetId: String,
+        orderId: String,
+        rating: Int,
+        comment: String,
+    ) {
+        firestore.collection("User")
+            .document(targetId)
+            .collection("reviews")
+            .add(
+                mapOf(
+                    "orderId"        to orderId,
+                    "reviewerUserId" to reviewerId,
+                    "rating"         to rating,
+                    "comment"        to comment,
+                    "createdAt"      to FieldValue.serverTimestamp()
+                )
+            )
+            .await()
+    }
 }
 
 

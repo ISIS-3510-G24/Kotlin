@@ -32,7 +32,7 @@ interface UserReviewDao {
     fun hasReviewedOrder(reviewer: String, orderId: String): Flow<Boolean>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(review: UserReviewEntity)
+    suspend fun insert(review: UserReviewEntity): Long
 
     @Query("UPDATE user_reviews SET status = :status WHERE localId = :id")
     suspend fun updateStatus(id: Long, status: String)

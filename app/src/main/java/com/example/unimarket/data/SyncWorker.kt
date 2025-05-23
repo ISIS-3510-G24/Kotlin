@@ -2,8 +2,10 @@ package com.example.unimarket.data
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -19,12 +21,20 @@ class SyncWorker(
     private val db = UniMarketDatabase.getInstance(appContext)
     private val pendingDao = db.pendingOpDao()
     private val imageDao = db.imageCacheDao()
-
+    private val auth = FirebaseAuth.getInstance()
     private val firestore = Firebase.firestore
     private val storage = Firebase.storage
     private val gson = Gson()
 
+    companion object {
+        private val TAG = SyncWorker::class.java.simpleName
+    }
+
     override suspend fun doWork(): Result {
+        val user = auth.currentUser ?: return Result.retry()
+
+        user.getIdToken(true).await()
+
         val ops = pendingDao.getAll()
         for (op in ops) {
             when (op.type) {
@@ -162,27 +172,42 @@ class SyncWorker(
 
                 "USER_REVIEW" -> {
                     try {
-                        val p = gson.fromJson(op.payload, Map::class.java)
-                        val target = p["targetUserId"] as String
-                        firestore.collection("User")
-                            .document(target)
-                            .collection("reviews")
-                            .add(mapOf(
-                                "reviewerUserId" to p["reviewerUserId"],
-                                "rating" to p["rating"],
-                                "comment" to p["comment"],
-                                "createdAt" to FieldValue.serverTimestamp(),
-                            )).await()
+                        val p = gson.fromJson(op.payload, UserReviewPayload::class.java)
 
-                        db.userReviewDao().updateStatus(
-                            id = (p["createdAt"] as Number).toLong(),
-                            status = "SENT"
-                        )
+                        if (p.targetUserId.isBlank() || p.reviewerUserId.isBlank()) {
+                            Log.e(TAG, "Payload USER_REVIEW invalid, omit: ${op.payload}")
+                            pendingDao.delete(op)
+                            continue
+                        }
+
+                        Log.d(TAG, "Creating review: target=${p.targetUserId} reviewer=${p.reviewerUserId}")
+
+                        firestore.collection("User")
+                            .document(p.targetUserId)
+                            .collection("reviews")
+                            .add(
+                                mapOf(
+                                    "orderId"         to p.orderId,
+                                    "reviewerUserId"  to p.reviewerUserId,
+                                    "rating"          to p.rating,
+                                    "comment"         to p.comment,
+                                    "createdAt"       to FieldValue.serverTimestamp()
+                                )
+                            )
+                            .await()
+
+                        db.userReviewDao().updateStatus(p.localId, "SENT")
+                        pendingDao.delete(op)
+
+                    } catch (e: com.google.gson.JsonSyntaxException) {
+                        Log.e(TAG, "JSON not valid in USER_REVIEW, eliminating op: ${op.payload}", e)
                         pendingDao.delete(op)
                     } catch (e: Exception) {
+                        Log.e(TAG, "Error sending USER_REVIEW, retry", e)
                         return Result.retry()
                     }
                 }
+
                 else -> pendingDao.delete(op)
             }
         }

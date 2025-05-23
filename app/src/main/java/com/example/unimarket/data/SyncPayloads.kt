@@ -46,3 +46,12 @@ data class PublishWithImagePayload(
     val remotePath: String,
     val status: String,
 )
+
+data class UserReviewPayload(
+    val localId: Long,
+    val targetUserId: String,
+    val reviewerUserId: String,
+    val orderId: String,
+    val rating: Int,
+    val comment: String
+)
