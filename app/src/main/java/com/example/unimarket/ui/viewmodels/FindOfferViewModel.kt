@@ -1,12 +1,19 @@
 package com.example.unimarket.ui.viewmodels
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 data class FindItem(
     val id: String = "",
@@ -23,59 +30,96 @@ data class FindOfferUiState(
     val userMajor: String = "",
     val showGreetingBanner: Boolean = false,
     val isSearchVisible: Boolean = false,
-    val searchText: String = ""
+    val searchText: String = "",
+    val isLoading: Boolean = false,
+    val isOffline: Boolean = false,
+    val error: String? = null
 )
 
-class FindOfferViewModel : ViewModel() {
-
-    private val _uiState = MutableStateFlow(FindOfferUiState())
-    val uiState: StateFlow<FindOfferUiState> = _uiState
-
+class FindOfferViewModel(
+    private val appContext: Context
+) : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val db   = Firebase.firestore
-    private var findsListener: ListenerRegistration? = null
+    private var listener: ListenerRegistration? = null
+
+    private val _uiState = MutableStateFlow(FindOfferUiState())
+    val uiState: StateFlow<FindOfferUiState> = _uiState.asStateFlow()
 
     init {
-        fetchUserMajor()
-        listenFindsRealtime()
+        refreshAll()
     }
 
-    private fun fetchUserMajor() {
-        val uid = auth.currentUser?.uid ?: return
-        db.collection("User")
-            .document(uid)
-            .get()
-            .addOnSuccessListener { doc ->
+    private fun isOnline(): Boolean {
+        val cm = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    fun refreshAll() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                isOffline = !isOnline(),
+                error = null
+            )
+
+            val uid = auth.currentUser?.uid
+            if (uid == null) {
+                _uiState.value = _uiState.value.copy(isLoading = false)
+                return@launch
+            }
+
+            try {
+                val doc = db.collection("User").document(uid).get().await()
                 val major = doc.getString("major")?.uppercase() ?: ""
                 _uiState.value = _uiState.value.copy(userMajor = major)
+            } catch (_: Exception) {
             }
-    }
 
-    private fun listenFindsRealtime() {
-        // Aquí estamos suscribiéndonos a cambios en la colección "finds"
-        findsListener = db.collection("finds")
-            .addSnapshotListener { snapshot, error ->
-                if (error != null || snapshot == null) return@addSnapshotListener
-
-                val items = snapshot.documents.map { doc ->
-                    FindItem(
-                        id          = doc.id,
-                        title       = doc.getString("title") ?: "",
-                        description = doc.getString("description") ?: "",
-                        image       = doc.getString("image") ?: "",
-                        status      = doc.getString("status") ?: "",
-                        major       = doc.getString("major")?.uppercase() ?: "",
-                        offerCount  = doc.getLong("offerCount")?.toInt() ?: 0
+            if (isOnline()) {
+                try {
+                    val snap = db.collection("finds").get().await()
+                    val items = snap.documents.map { d ->
+                        FindItem(
+                            id = d.id,
+                            title = d.getString("title") ?: "",
+                            description = d.getString("description") ?: "",
+                            image = d.getString("image") ?: "",
+                            status = d.getString("status") ?: "",
+                            major = d.getString("major")?.uppercase() ?: "",
+                            offerCount = d.getLong("offerCount")?.toInt() ?: 0
+                        )
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        findList = items
                     )
+                } catch (e: Exception) {
+                    _uiState.value = _uiState.value.copy(error = e.message)
                 }
-                _uiState.value = _uiState.value.copy(findList = items)
+                listener?.remove()
+                listener = db.collection("finds")
+                    .addSnapshotListener { snap, err ->
+                        if (err != null || snap == null) return@addSnapshotListener
+                        val liveItems = snap.documents.map { d ->
+                            FindItem(
+                                id = d.id,
+                                title = d.getString("title") ?: "",
+                                description = d.getString("description") ?: "",
+                                image = d.getString("image") ?: "",
+                                status = d.getString("status") ?: "",
+                                major = d.getString("major")?.uppercase() ?: "",
+                                offerCount = d.getLong("offerCount")?.toInt() ?: 0
+                            )
+                        }
+                        _uiState.value = _uiState.value.copy(findList = liveItems)
+                    }
+            } else {
+                listener?.remove()
             }
-    }
 
-    override fun onCleared() {
-        super.onCleared()
-        // Eliminamos listener para evitar fugas de memoria
-        findsListener?.remove()
+            _uiState.value = _uiState.value.copy(isLoading = false)
+        }
     }
 
     fun onSearchClick() {
@@ -90,8 +134,13 @@ class FindOfferViewModel : ViewModel() {
 
     fun onClearSearch() {
         _uiState.value = _uiState.value.copy(
-            searchText = "",
-            isSearchVisible = false
+            isSearchVisible = false,
+            searchText = ""
         )
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        listener?.remove()
     }
 }

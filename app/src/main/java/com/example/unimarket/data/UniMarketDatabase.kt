@@ -5,12 +5,14 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.example.unimarket.data.daos.FindDao
 import com.example.unimarket.data.daos.ImageCacheDao
 import com.example.unimarket.data.daos.OrderDao
 import com.example.unimarket.data.daos.PendingOpDao
 import com.example.unimarket.data.daos.ProductDao
 import com.example.unimarket.data.daos.UserReviewDao
 import com.example.unimarket.data.daos.WishlistDao
+import com.example.unimarket.data.entities.FindEntity
 import com.example.unimarket.data.entities.ImageCacheEntity
 import com.example.unimarket.data.entities.OrderEntity
 import com.example.unimarket.data.entities.PendingOpEntity
@@ -22,18 +24,20 @@ import com.example.unimarket.data.entities.WishlistEntity
     entities = [
         ProductEntity::class,
         WishlistEntity::class,
+        FindEntity:: class,
         OrderEntity::class,
         ImageCacheEntity::class,
         PendingOpEntity::class,
         UserReviewEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class UniMarketDatabase : RoomDatabase() {
     abstract fun productDao(): ProductDao
     abstract fun wishlistDao(): WishlistDao
+    abstract fun findDao(): FindDao
     abstract fun orderDao(): OrderDao
     abstract fun imageCacheDao(): ImageCacheDao
     abstract fun pendingOpDao(): PendingOpDao

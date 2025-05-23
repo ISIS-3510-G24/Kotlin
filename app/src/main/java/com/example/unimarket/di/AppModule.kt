@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.work.WorkManager
 import com.example.unimarket.data.UniMarketDatabase
 import com.example.unimarket.data.UniMarketRepository
+import com.example.unimarket.data.daos.FindDao
 import com.example.unimarket.data.daos.ImageCacheDao
 import com.example.unimarket.data.daos.OrderDao
 import com.example.unimarket.data.daos.PendingOpDao
@@ -39,6 +40,7 @@ object AppModule {
 
     @Provides fun provideProductDao(db: UniMarketDatabase) = db.productDao()
     @Provides fun provideWishlistDao(db: UniMarketDatabase) = db.wishlistDao()
+    @Provides fun provideFindDao(db: UniMarketDatabase) = db.findDao()
     @Provides fun provideOrderDao(db: UniMarketDatabase) = db.orderDao()
     @Provides fun provideImageCacheDao(db: UniMarketDatabase) = db.imageCacheDao()
     @Provides fun providePendingOpDao(db: UniMarketDatabase) = db.pendingOpDao()
@@ -58,6 +60,7 @@ object AppModule {
         @ApplicationContext c: Context,
         productDao: ProductDao,
         wishlistDao: WishlistDao,
+        findDao: FindDao,
         orderDao: OrderDao,
         imageCacheDao: ImageCacheDao,
         pendingOpDao: PendingOpDao,
@@ -71,6 +74,7 @@ object AppModule {
             productDao     = productDao,
             wishlistDao    = wishlistDao,
             orderDao       = orderDao,
+            findDao        = findDao,
             imageCacheDao  = imageCacheDao,
             pendingOpDao   = pendingOpDao,
             userReviewDao  = userReviewDao,

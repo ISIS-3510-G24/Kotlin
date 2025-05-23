@@ -3,12 +3,14 @@ package com.example.unimarket.data
 import android.content.Context
 import android.net.Uri
 import androidx.collection.LruCache
+import com.example.unimarket.data.daos.FindDao
 import com.example.unimarket.data.daos.ImageCacheDao
 import com.example.unimarket.data.daos.OrderDao
 import com.example.unimarket.data.daos.PendingOpDao
 import com.example.unimarket.data.daos.ProductDao
 import com.example.unimarket.data.daos.UserReviewDao
 import com.example.unimarket.data.daos.WishlistDao
+import com.example.unimarket.data.entities.FindEntity
 import com.example.unimarket.data.entities.ImageCacheEntity
 import com.example.unimarket.data.entities.OrderEntity
 import com.example.unimarket.data.entities.PendingOpEntity
@@ -40,6 +42,7 @@ class UniMarketRepository(
     private val appContext: Context,
     private val productDao: ProductDao,
     private val wishlistDao: WishlistDao,
+    private val findDao: FindDao,
     private val orderDao: OrderDao,
     private val imageCacheDao: ImageCacheDao,
     private val pendingOpDao: PendingOpDao,
@@ -56,7 +59,7 @@ class UniMarketRepository(
                 flow {
                     val now = System.currentTimeMillis()
                     if (cached.isEmpty()) {
-                        FileCacheManager.readCache(appContext)?.let { json ->
+                        FileCacheManager.readCache(appContext, "finds")?.let { json ->
                             val backup: List<ProductEntity> = gson.fromJson(
                                 json, object : TypeToken<List<ProductEntity>>() {}.type
                             )
@@ -325,5 +328,125 @@ class UniMarketRepository(
                 createdAt = now
             )
         )
+    }
+}
+
+
+            fun observeFinds(cacheTtlMs: Long): Flow<List<FindEntity>> =
+                findDao.observeAll()
+                    .flatMapLatest { cached ->
+                        flow {
+                            val now = System.currentTimeMillis()
+
+                            if (cached.isEmpty()) {
+                                FileCacheManager.readCache(appContext, "finds")?.let { json ->
+                                    val backup: List<FindEntity> = gson.fromJson(
+                                        json, object : TypeToken<List<FindEntity>>() {}.type
+                                    )
+                                    emit(backup)
+                                }
+                            }
+
+                            val oldest = cached.minOfOrNull { it.fetchedAt } ?: 0L
+                            if (cached.isNotEmpty() && now - oldest < cacheTtlMs) {
+                                emit(cached)
+                            } else {
+                                val snap = firestore.collection("finds").get().await()
+                                val fresh = snap.documents.map { d ->
+                                    FindEntity(
+                                        id         = d.id,
+                                        title      = d.getString("title") ?: "",
+                                        description= d.getString("description") ?: "",
+                                        image      = d.get("image")  as? List<String> ?: emptyList(),
+                                        labels     = d.get("labels") as? List<String> ?: emptyList(),
+                                        major      = d.getString("major") ?: "",
+                                        offerCount = d.getLong("offerCount")?.toString() ?: "0",
+                                        status     = d.getString("status") ?: "",
+                                        fetchedAt  = now
+                                    )
+                                }
+                                findDao.clear()
+                                findDao.insertAll(fresh)
+                                FileCacheManager.writeCache(appContext, "finds", gson.toJson(fresh))
+                                emit(fresh)
+                            }
+                        }.flowOn(ioDispatcher)
+                    }.flowOn(ioDispatcher)
+
+            suspend fun refreshFinds() = withContext(ioDispatcher) {
+                val now = System.currentTimeMillis()
+                val snap = firestore.collection("finds").get().await()
+                val fresh = snap.documents.map { d ->
+                    FindEntity(
+                        id         = d.id,
+                        title      = d.getString("title") ?: "",
+                        description= d.getString("description") ?: "",
+                        image      = d.get("image")  as? List<String> ?: emptyList(),
+                        labels     = d.get("labels") as? List<String> ?: emptyList(),
+                        major      = d.getString("major") ?: "",
+                        offerCount = d.getLong("offerCount")?.toString() ?: "0",
+                        status     = d.getString("status") ?: "",
+                        fetchedAt  = now
+                    )
+                }
+                findDao.clear()
+                findDao.insertAll(fresh)
+                FileCacheManager.writeCache(appContext, "finds", gson.toJson(fresh))
+            }
+
+            fun observeFindById(id: String): Flow<FindEntity?> =
+                findDao.observeById(id)
+                    .flowOn(ioDispatcher)
+
+            val findCache = object : LruCache<String, FindEntity>(100) {
+                override fun sizeOf(key: String, value: FindEntity) = 1
+            }
+
+            fun getFindByIdCached(id: String, cacheTtlMs: Long): Flow<FindEntity> = flow {
+                findCache[id]?.let {
+                    emit(it)
+                    return@flow
+                }
+                findDao.getById(id)?.let {
+                    findCache.put(id, it)
+                    emit(it)
+                    return@flow
+                }
+                val now = System.currentTimeMillis()
+                val doc = firestore.collection("finds").document(id).get().await()
+                if (!doc.exists()) throw Exception("Find not found")
+                val fetched = FindEntity(
+                    id         = doc.id,
+                    title      = doc.getString("title") ?: "",
+                    description= doc.getString("description") ?: "",
+                    image      = doc.get("image")  as? List<String> ?: emptyList(),
+                    labels     = doc.get("labels") as? List<String> ?: emptyList(),
+                    major      = doc.getString("major") ?: "",
+                    offerCount = doc.getLong("offerCount")?.toString() ?: "0",
+                    status     = doc.getString("status") ?: "",
+                    fetchedAt  = now
+                )
+                findCache.put(id, fetched)
+                findDao.insert(fetched)
+                emit(fetched)
+            }.flowOn(ioDispatcher)
+
+            fun getFindById(id: String): Flow<FindEntity> = flow {
+                val doc = firestore.collection("finds").document(id).get().await()
+                if (!doc.exists()) throw Exception("Find not found")
+                val entity = FindEntity(
+                    id         = doc.id,
+                    title      = doc.getString("title") ?: "",
+                    description= doc.getString("description") ?: "",
+                    image      = doc.get("image")  as? List<String> ?: emptyList(),
+                    labels     = doc.get("labels") as? List<String> ?: emptyList(),
+                    major      = doc.getString("major") ?: "",
+                    offerCount = doc.getLong("offerCount")?.toString() ?: "0",
+                    status     = doc.getString("status") ?: "",
+                    fetchedAt  = System.currentTimeMillis()
+                )
+                emit(entity)
+            }.flowOn(ioDispatcher)
+        }
     }
 }
