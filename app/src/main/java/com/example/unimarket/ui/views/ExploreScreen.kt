@@ -156,11 +156,11 @@ fun ExploreScreen(
 
 @Composable
 fun ProductCard(
+    modifier: Modifier = Modifier,
     product: Product,
     isFavorite: Boolean,
     onFavoriteClick: () -> Unit,
     onClick: () -> Unit = {},
-    modifier: Modifier = Modifier
 ) {
     Card(
         modifier  = modifier
