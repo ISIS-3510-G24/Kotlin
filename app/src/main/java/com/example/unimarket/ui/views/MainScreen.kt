@@ -25,16 +25,16 @@ import com.example.unimarket.ui.viewmodels.ProductDetailViewModel
 
 @Composable
 fun MainScreen(
-    rootNavController: NavController
+    rootNavController: NavController,
 ) {
     val navController = rememberNavController()
 
     val bottomNavItems = listOf(
-        BottomNavItem("Orders",       "orders",        Icons.Default.Widgets),
-        BottomNavItem("Find & Offer", "find_offer",    Icons.Default.Search),
-        BottomNavItem("Explore",      "explore",       Icons.Default.Explore),
-        BottomNavItem("Chat",         "chat",          Icons.Default.ChatBubble),
-        BottomNavItem("Profile",      "profile",       Icons.Default.Person)
+        BottomNavItem("Orders", "orders", Icons.Default.Widgets),
+        BottomNavItem("Find & Offer", "find_offer", Icons.Default.Search),
+        BottomNavItem("Explore", "explore", Icons.Default.Explore),
+        BottomNavItem("Chat", "chat", Icons.Default.ChatBubble),
+        BottomNavItem("Profile", "profile", Icons.Default.Person)
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -44,7 +44,7 @@ fun MainScreen(
             bottomBar = {
                 BottomNavBar(navController = navController, items = bottomNavItems)
             },
-            contentWindowInsets = WindowInsets(0,0,0,0)
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { innerPadding ->
             NavHost(
                 navController = navController,
@@ -53,19 +53,19 @@ fun MainScreen(
             ) {
                 composable("find_offer") {
                     FindOfferScreen(
-                        navController       = rootNavController,
+                        navController = rootNavController,
                         bottomNavController = navController
                     )
                 }
                 composable("orders") {
                     OrdersScreen(
-                        navController       = rootNavController,
+                        navController = rootNavController,
                         bottomNavController = navController
                     )
                 }
                 composable("chat") {
                     ChatScreen(
-                        navController     = navController,
+                        navController = navController,
                         onNavigateToChat = { chatId ->
                             navController.navigate("chatDetail/$chatId")
                         }
@@ -75,24 +75,14 @@ fun MainScreen(
                     ExploreScreen(navController)
                 }
 
-                composable(
-                    "productDetail/{productId}",
-                    arguments = listOf(navArgument("productId") { type = NavType.StringType })
-                ) { backStack ->
-                    val vm: ProductDetailViewModel = hiltViewModel(backStack)
-                    ProductDetailScreen(
+                composable("profile") {
+                    ProfileScreen(
                         navController = navController,
-                        viewModel     = vm
+                        rootNavController = rootNavController,
+                        bottomItems = bottomNavItems
                     )
                 }
 
-                composable("profile") {
-                    ProfileScreen(
-                        navController     = navController,
-                        rootNavController = rootNavController,
-                        bottomItems       = bottomNavItems
-                    )
-                }
                 composable(
                     route = "productDetail/{productId}",
                     arguments = listOf(navArgument("productId") { type = NavType.StringType })
@@ -104,6 +94,7 @@ fun MainScreen(
                         viewModel = detailVm
                     )
                 }
+
                 composable("publishProduct") {
                     PublishProductScreen(navController)
                 }
@@ -118,6 +109,22 @@ fun MainScreen(
                 }
                 composable("validate_seller") {
                     ValidateDeliveryScreen(navController = navController)
+                }
+
+                composable(
+                    "writeUserReview/{orderId}/{targetId}",
+                    arguments = listOf(
+                        navArgument("orderId") { type = NavType.StringType },
+                        navArgument("targetId") { type = NavType.StringType }
+                    )
+                ) { back ->
+                    val orderId = back.arguments!!.getString("orderId")!!
+                    val target = back.arguments!!.getString("targetId")!!
+                    WriteUserReviewScreen(orderId = orderId, targetId = target, navController = navController)
+                }
+
+                composable("myUserReviews") {
+                    MyUserReviewsScreen(navController = navController)
                 }
             }
         }

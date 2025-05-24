@@ -1,4 +1,3 @@
-// OrdersScreen.kt
 package com.example.unimarket.ui.views
 
 import androidx.compose.foundation.Image
@@ -29,10 +28,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,25 +51,28 @@ import com.example.unimarket.data.UniMarketRepository
 import com.example.unimarket.ui.viewmodels.OrderTab
 import com.example.unimarket.ui.viewmodels.OrdersViewModel
 import kotlinx.coroutines.Dispatchers
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrdersScreen(
     navController: NavController,
-    bottomNavController: NavController
+    bottomNavController: NavController,
 ) {
     val context = LocalContext.current
-    val db      = UniMarketDatabase.getInstance(context)
-    val repo    = remember {
+    val db = UniMarketDatabase.getInstance(context)
+    val repo = remember {
         UniMarketRepository(
-            appContext    = context,
-            productDao    = db.productDao(),
-            wishlistDao   = db.wishlistDao(),
-            findDao       = db.findDao(),
-            orderDao      = db.orderDao(),
+            appContext = context,
+            productDao = db.productDao(),
+            wishlistDao = db.wishlistDao(),
+            findDao = db.findDao(),
+            orderDao = db.orderDao(),
             imageCacheDao = db.imageCacheDao(),
-            pendingOpDao  = db.pendingOpDao(),
-            ioDispatcher  = Dispatchers.IO
+            pendingOpDao = db.pendingOpDao(),
+            userReviewDao = db.userReviewDao(),
+            ioDispatcher = Dispatchers.IO
         )
     }
 
@@ -87,18 +91,26 @@ fun OrdersScreen(
     val vm: OrdersViewModel = viewModel(factory = factory)
 
     // collect UI state
-    val orders     by vm.orders.collectAsState()
+    val orders by vm.orders.collectAsState()
     val currentTab by vm.currentTab.collectAsState()
-    val isLoading  by vm.isLoading.collectAsState()
-    val error      by vm.error.collectAsState()
-    val lastRef    by vm.lastRefresh.collectAsState()
-    val userId     = vm.getCurrentUserId()
+    val isLoading by vm.isLoading.collectAsState()
+    val error by vm.error.collectAsState()
+    val lastRef by vm.lastRefresh.collectAsState()
+    val userId by remember { mutableStateOf(vm.getCurrentUserId()!!) }
+
+    val myWrittenReviews by repo
+        .observeReviewsByReviewer(userId)
+        .collectAsState(initial = emptyList())
+
+    val reviewedSet = remember(myWrittenReviews) {
+        myWrittenReviews.map { it.orderId }.toSet()
+    }
 
     // Coil ImageLoader with caching = Strategy 1
     val imageLoader = remember(context) {
         ImageLoader.Builder(context)
-            .diskCachePolicy   (CachePolicy.ENABLED)
-            .memoryCachePolicy (CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .memoryCachePolicy(CachePolicy.ENABLED)
             .build()
     }
 
@@ -121,11 +133,11 @@ fun OrdersScreen(
     ) { padding ->
         Column(Modifier.padding(padding)) {
             TabRow(selectedTabIndex = currentTab.ordinal) {
-                OrderTab.values().forEach { tab ->
+                OrderTab.entries.forEach { tab ->
                     Tab(
                         selected = currentTab == tab,
-                        onClick  = { vm.setTab(tab) },
-                        text     = { Text(tab.name) }
+                        onClick = { vm.setTab(tab) },
+                        text = { Text(tab.name) }
                     )
                 }
             }
@@ -134,24 +146,44 @@ fun OrdersScreen(
                 isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                     CircularProgressIndicator()
                 }
+
                 error != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
                 }
+
                 else -> LazyColumn(
-                    contentPadding       = PaddingValues(8.dp),
-                    verticalArrangement  = Arrangement.spacedBy(12.dp)
+                    contentPadding = PaddingValues(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(orders.filter {
+                    items(
+                        orders.filter { order ->
                         when (currentTab) {
                             OrderTab.HISTORY -> true
-                            OrderTab.BUYING  -> it.buyerID  == userId
-                            OrderTab.SELLING -> it.sellerID == userId
+                            OrderTab.BUYING -> order.buyerID == userId
+                            OrderTab.SELLING -> order.sellerID == userId
                         }
                         // Strategy 2
-                    }) { order ->
-                        OrderItem(order, imageLoader) {
-                            bottomNavController.navigate("productDetail/${order.productId}")
-                        }
+                    }
+                    ) { order ->
+                        val target = if (order.buyerID == userId) order.sellerID else order.buyerID
+
+                        val canReview = order.id !in reviewedSet
+
+                        OrderItem(
+                            order = order,
+                            imageLoader = imageLoader,
+                            currentUserId = userId,
+                            canReview = canReview,
+                            onCardClick = {
+                                // Navigate to product detail screen
+                                bottomNavController
+                                    .navigate("productDetail/${order.productId}")
+                            },
+                            onReviewClick = {
+                                bottomNavController
+                                    .navigate("writeUserReview/${order.id}/$target")
+                            }
+                        )
                     }
                 }
             }
@@ -159,30 +191,66 @@ fun OrdersScreen(
     }
 }
 
+
 @Composable
 private fun OrderItem(
     order: com.example.unimarket.ui.viewmodels.Order,
     imageLoader: ImageLoader,
-    onCardClick: () -> Unit
+    currentUserId: String,
+    canReview: Boolean,
+    onCardClick: () -> Unit,
+    onReviewClick: () -> Unit,
 ) {
+    val fmt = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+
     Card(
         modifier  = Modifier
             .fillMaxWidth()
             .clickable(onClick = onCardClick),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter            = rememberAsyncImagePainter(order.imageUrl, imageLoader),
-                contentDescription = null,
-                modifier           = Modifier.size(64.dp)
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(order.productTitle, style = MaterialTheme.typography.titleMedium)
-                Text("Price: \$${order.price.toInt()}")
-                Text("Date: ${order.orderDate.toDate()}")
-                Text("Status: ${order.status}")
+        Column {
+            Row(
+                Modifier
+                    .padding(12.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    painter            = rememberAsyncImagePainter(order.imageUrl, imageLoader),
+                    contentDescription = null,
+                    modifier           = Modifier.size(64.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(order.productTitle, style = MaterialTheme.typography.titleMedium)
+                    Text("Price: \$${order.price.toInt()}")
+                    Text("Date: ${fmt.format(order.orderDate.toDate())}")
+                    Text("Status: ${order.status}")
+                }
+            }
+
+            if (canReview) {
+                Row(
+                    Modifier
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = onReviewClick) {
+                        Text("Write Review")
+                    }
+                }
+            } else {
+                Text(
+                    "Already reviewed this order",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .fillMaxWidth()
+                )
             }
         }
     }

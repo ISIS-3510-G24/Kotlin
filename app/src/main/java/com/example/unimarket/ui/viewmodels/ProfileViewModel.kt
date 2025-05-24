@@ -3,7 +3,9 @@ package com.example.unimarket.ui.viewmodels
 import android.net.Uri
 import androidx.core.os.bundleOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.unimarket.data.FirebaseFirestoreSingleton
+import com.example.unimarket.data.UniMarketRepository
 import com.example.unimarket.ui.models.ProfileUiState
 import com.example.unimarket.ui.models.User
 import com.google.firebase.Firebase
@@ -13,12 +15,22 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.perf.FirebasePerformance
 import com.google.firebase.perf.metrics.Trace
 import com.google.firebase.storage.FirebaseStorage
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class ProfileViewModel : ViewModel() {
-    private val auth = FirebaseAuth.getInstance()
+@HiltViewModel
+class ProfileViewModel @Inject constructor(
+    private val auth: FirebaseAuth,
+    private val repo: UniMarketRepository,
+) : ViewModel() {
+    private val uid = auth.currentUser!!.uid
+
     private val usersRef = FirebaseFirestoreSingleton.getCollection("User")
     private val storageRef = FirebaseStorage.getInstance().reference
 
@@ -30,9 +42,23 @@ class ProfileViewModel : ViewModel() {
     private var trace: Trace? = null
 
     private val _uiState = MutableStateFlow(ProfileUiState())
-    val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
+    val uiState = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            repo.syncRemoteReviewsFor(uid)
+        }
+
+        repo.observeUserRatingStats(uid)
+            .onEach { stats ->
+                _uiState.update {
+                    it.copy(
+                        averageRating = stats.average,
+                        reviewCount = stats.count
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
         loadUser()
     }
 
@@ -52,7 +78,7 @@ class ProfileViewModel : ViewModel() {
     fun validateOrder(
         hashConfirm: String,
         onSuccess: () -> Unit,
-        onError: (String) -> Unit
+        onError: (String) -> Unit,
     ) {
         ordersRef
             .whereEqualTo("hashConfirm", hashConfirm)
@@ -94,6 +120,19 @@ class ProfileViewModel : ViewModel() {
             }
     }
 
+    private fun observeRatingStats() {
+        repo.observeUserRatingStats(uid)
+            .onEach { stats ->
+                _uiState.update {
+                    it.copy(
+                        averageRating = stats.average,
+                        reviewCount = stats.count
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
+    }
+
     private fun loadUser() {
         onScreenLoadStart()
         val uid = auth.currentUser?.uid ?: return
@@ -122,7 +161,7 @@ class ProfileViewModel : ViewModel() {
     fun uploadProfilePicture(
         uri: Uri,
         onSuccess: () -> Unit,
-        onError: (String) -> Unit
+        onError: (String) -> Unit,
     ) {
         val uid = auth.currentUser?.uid ?: return
         // Reference like "profilePictures/{uid}.jpg"

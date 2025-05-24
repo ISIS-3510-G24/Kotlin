@@ -10,6 +10,7 @@ import com.example.unimarket.data.daos.ImageCacheDao
 import com.example.unimarket.data.daos.OrderDao
 import com.example.unimarket.data.daos.PendingOpDao
 import com.example.unimarket.data.daos.ProductDao
+import com.example.unimarket.data.daos.UserReviewDao
 import com.example.unimarket.data.daos.WishlistDao
 import com.example.unimarket.utils.ConnectivityObserver
 import com.google.firebase.analytics.FirebaseAnalytics
@@ -43,6 +44,7 @@ object AppModule {
     @Provides fun provideOrderDao(db: UniMarketDatabase) = db.orderDao()
     @Provides fun provideImageCacheDao(db: UniMarketDatabase) = db.imageCacheDao()
     @Provides fun providePendingOpDao(db: UniMarketDatabase) = db.pendingOpDao()
+    @Provides fun provideUserReviewDao(db: UniMarketDatabase) = db.userReviewDao()
 
     @Provides @Singleton
     fun provideFirestore(): FirebaseFirestore = FirebaseFirestore.getInstance()
@@ -62,6 +64,7 @@ object AppModule {
         orderDao: OrderDao,
         imageCacheDao: ImageCacheDao,
         pendingOpDao: PendingOpDao,
+        userReviewDao: UserReviewDao,
         firestore: FirebaseFirestore,
         storage: FirebaseStorage,
         gson: Gson
@@ -74,6 +77,7 @@ object AppModule {
             findDao        = findDao,
             imageCacheDao  = imageCacheDao,
             pendingOpDao   = pendingOpDao,
+            userReviewDao  = userReviewDao,
             firestore      = firestore,
             storage        = storage,
             gson           = gson,
