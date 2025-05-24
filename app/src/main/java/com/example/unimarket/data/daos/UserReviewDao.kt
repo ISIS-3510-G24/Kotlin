@@ -83,5 +83,8 @@ interface UserReviewDao {
   """
     )
     fun averageRatingFor(uid: String): Flow<Double?>
+
+    @Query("DELETE FROM user_reviews WHERE targetUserId = :uid")
+    suspend fun deleteAllForUser(uid: String)
 }
 

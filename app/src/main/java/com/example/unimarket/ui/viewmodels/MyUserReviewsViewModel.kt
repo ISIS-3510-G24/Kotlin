@@ -19,7 +19,7 @@ class MyUserReviewsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            repo.refreshUserReviews(me)
+            repo.syncRemoteReviewsFor(me)
         }
     }
 

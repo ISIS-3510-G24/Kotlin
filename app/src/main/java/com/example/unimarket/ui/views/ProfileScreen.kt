@@ -173,8 +173,8 @@ fun ProfileScreen(
 
                         Spacer(Modifier.height(16.dp))
 
-                        uiState.averageRating?.let { avg ->
-                            Row(
+                        if (uiState.reviewCount > 0) {
+                            Row (
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center,
                                 modifier = Modifier.fillMaxWidth()
@@ -182,7 +182,7 @@ fun ProfileScreen(
                                 Icon(Icons.Default.Star, contentDescription = null)
                                 Spacer(Modifier.width(4.dp))
                                 Text(
-                                    text = String.format("%.1f", avg),
+                                    text = String.format("%.1f", uiState.averageRating),
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Spacer(Modifier.width(8.dp))

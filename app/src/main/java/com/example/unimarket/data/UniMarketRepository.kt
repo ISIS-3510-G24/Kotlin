@@ -313,6 +313,33 @@ class UniMarketRepository(
         limit: Int = 10,
     ) = userReviewDao.observeLatestReviewsFor(uid, limit)
 
+    suspend fun syncRemoteReviewsFor(userId: String) = withContext(ioDispatcher) {
+        val snaps = firestore.collection("User")
+            .document(userId)
+            .collection("reviews")
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .limit(10)
+            .get()
+            .await()
+
+        val entities = snaps.documents.map { d ->
+            UserReviewEntity(
+                localId        = 0,
+                orderId        = d.getString("orderId")               ?: "",
+                targetUserId   = userId,
+                reviewerUserId = d.getString("reviewerUserId")        ?: "",
+                rating         = d.getLong("rating")?.toInt()         ?: 0,
+                comment        = d.getString("comment")               ?: "",
+                createdAt      = d.getTimestamp("createdAt")?.toDate()?.time
+                    ?: 0L,
+                status         = "SENT"
+            )
+        }
+
+        userReviewDao.clearSentReviewsFor(userId)
+        userReviewDao.insertAll(entities)
+    }
+
     suspend fun postUserReview(
         reviewerId: String,
         targetId: String,

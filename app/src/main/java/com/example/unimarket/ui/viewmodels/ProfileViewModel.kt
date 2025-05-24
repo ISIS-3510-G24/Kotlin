@@ -17,11 +17,11 @@ import com.google.firebase.perf.metrics.Trace
 import com.google.firebase.storage.FirebaseStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -42,11 +42,24 @@ class ProfileViewModel @Inject constructor(
     private var trace: Trace? = null
 
     private val _uiState = MutableStateFlow(ProfileUiState())
-    val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
+    val uiState = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            repo.syncRemoteReviewsFor(uid)
+        }
+
+        repo.observeUserRatingStats(uid)
+            .onEach { stats ->
+                _uiState.update {
+                    it.copy(
+                        averageRating = stats.average,
+                        reviewCount = stats.count
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
         loadUser()
-        observeRatingStats()
     }
 
     fun onScreenLoadStart() {
