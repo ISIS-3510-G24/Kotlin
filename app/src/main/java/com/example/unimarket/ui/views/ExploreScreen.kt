@@ -57,14 +57,14 @@ fun ExploreScreen(
     navController: NavController,
     exploreViewModel: ExploreViewModel = hiltViewModel(),
 ) {
-    val products        by exploreViewModel.products.collectAsState()
-    val wishlistIds     by exploreViewModel.wishlistIds.collectAsState()
-    val recIds          by exploreViewModel.recommendations.collectAsState()
-    val isLoading       by exploreViewModel.isLoading.collectAsState()
-    val analytics       = FirebaseAnalytics.getInstance(LocalContext.current)
+    val products by exploreViewModel.products.collectAsState()
+    val wishlistIds by exploreViewModel.wishlistIds.collectAsState()
+    val recIds by exploreViewModel.recommendations.collectAsState()
+    val isLoading by exploreViewModel.isLoading.collectAsState()
+    val analytics = FirebaseAnalytics.getInstance(LocalContext.current)
 
     val recommended = recIds.mapNotNull { id -> products.find { it.id == id } }
-    val available   = products.filter { it.status == "Available" && it.id !in recIds }
+    val available = products.filter { it.status == "Available" && it.id !in recIds }
 
     Scaffold(
         floatingActionButton = {
@@ -79,17 +79,17 @@ fun ExploreScreen(
                 .padding(innerPadding)
         ) {
             LazyVerticalGrid(
-                columns               = GridCells.Fixed(2),
-                contentPadding        = PaddingValues(16.dp),
+                columns = GridCells.Fixed(2),
+                contentPadding = PaddingValues(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement   = Arrangement.spacedBy(12.dp),
-                modifier              = Modifier.fillMaxSize()
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize()
             ) {
                 if (recommended.isNotEmpty()) {
                     item(span = { GridItemSpan(maxCurrentLineSpan) }) {
                         Text(
                             "Recommended for you",
-                            style    = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = 8.dp)
@@ -97,19 +97,19 @@ fun ExploreScreen(
                     }
                     items(
                         items = recommended,
-                        key   = { it.id }
+                        key = { it.id }
                     ) { product ->
                         ProductCard(
-                            product         = product,
-                            isFavorite      = product.id in wishlistIds,
+                            product = product,
+                            isFavorite = product.id in wishlistIds,
                             onFavoriteClick = { exploreViewModel.toggleWishlist(product.id) },
-                            onClick         = { navController.navigate("productDetail/${product.id}") }
+                            onClick = { navController.navigate("productDetail/${product.id}") }
                         )
                     }
                     item(span = { GridItemSpan(maxCurrentLineSpan) }) {
                         Text(
                             "All Products",
-                            style    = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp)
@@ -119,7 +119,7 @@ fun ExploreScreen(
                     item(span = { GridItemSpan(maxCurrentLineSpan) }) {
                         Text(
                             "All Products",
-                            style    = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = 8.dp)
@@ -129,13 +129,13 @@ fun ExploreScreen(
 
                 items(
                     items = available,
-                    key   = { it.id }
+                    key = { it.id }
                 ) { product ->
                     ProductCard(
-                        product         = product,
-                        isFavorite      = product.id in wishlistIds,
+                        product = product,
+                        isFavorite = product.id in wishlistIds,
                         onFavoriteClick = { exploreViewModel.toggleWishlist(product.id) },
-                        onClick         = {
+                        onClick = {
                             analytics.logEvent(
                                 "view_product_detail",
                                 bundleOf("product_id" to product.id)
@@ -159,13 +159,16 @@ fun ProductCard(
     product: Product,
     isFavorite: Boolean,
     onFavoriteClick: () -> Unit,
-    modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     Card(
+        modifier  = modifier
+            .fillMaxWidth()
+            .height(260.dp)
+            .clickable(onClick = onClick),
         colors    = CardDefaults.cardColors(containerColor = Color.Transparent),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        modifier  = modifier.clickable(onClick = onClick)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Box(Modifier.fillMaxSize()) {
             Column(
@@ -173,30 +176,32 @@ fun ProductCard(
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                val painter = product.imageUrls.firstOrNull()
-                    ?.let { rememberAsyncImagePainter(it) }
-                    ?: rememberAsyncImagePainter(R.drawable.default_product)
-
                 Image(
-                    painter          = painter,
+                    painter           = product.imageUrls.firstOrNull()
+                        ?.let { rememberAsyncImagePainter(it) }
+                        ?: rememberAsyncImagePainter(R.drawable.default_product),
                     contentDescription = product.title,
-                    modifier         = Modifier
+                    modifier          = Modifier
                         .fillMaxWidth()
                         .height(140.dp),
-                    contentScale     = ContentScale.Crop
+                    contentScale      = ContentScale.Crop
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
 
                 Text(
-                    text  = product.title,
-                    style = MaterialTheme.typography.titleMedium
+                    text     = product.title,
+                    style    = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Text(
-                    text  = NumberFormat
-                        .getCurrencyInstance(Locale("es", "CO"))
+                    text     = NumberFormat
+                        .getCurrencyInstance(Locale("es","CO"))
                         .format(product.price),
-                    style = MaterialTheme.typography.bodyMedium
+                    style    = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
@@ -225,3 +230,5 @@ fun ProductCard(
         }
     }
 }
+
+
