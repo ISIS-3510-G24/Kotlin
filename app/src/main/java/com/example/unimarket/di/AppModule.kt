@@ -3,12 +3,16 @@ package com.example.unimarket.di
 import android.content.Context
 import androidx.room.Room
 import androidx.work.WorkManager
+import coil.ImageLoader
+import coil.memory.MemoryCache
 import com.example.unimarket.data.UniMarketDatabase
 import com.example.unimarket.data.UniMarketRepository
+import com.example.unimarket.data.daos.FindDao
 import com.example.unimarket.data.daos.ImageCacheDao
 import com.example.unimarket.data.daos.OrderDao
 import com.example.unimarket.data.daos.PendingOpDao
 import com.example.unimarket.data.daos.ProductDao
+import com.example.unimarket.data.daos.UserReviewDao
 import com.example.unimarket.data.daos.WishlistDao
 import com.example.unimarket.utils.ConnectivityObserver
 import com.google.firebase.analytics.FirebaseAnalytics
@@ -25,6 +29,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import javax.inject.Singleton
 
 @Module
@@ -38,9 +43,11 @@ object AppModule {
 
     @Provides fun provideProductDao(db: UniMarketDatabase) = db.productDao()
     @Provides fun provideWishlistDao(db: UniMarketDatabase) = db.wishlistDao()
+    @Provides fun provideFindDao(db: UniMarketDatabase) = db.findDao()
     @Provides fun provideOrderDao(db: UniMarketDatabase) = db.orderDao()
     @Provides fun provideImageCacheDao(db: UniMarketDatabase) = db.imageCacheDao()
     @Provides fun providePendingOpDao(db: UniMarketDatabase) = db.pendingOpDao()
+    @Provides fun provideUserReviewDao(db: UniMarketDatabase) = db.userReviewDao()
 
     @Provides @Singleton
     fun provideFirestore(): FirebaseFirestore = FirebaseFirestore.getInstance()
@@ -56,9 +63,11 @@ object AppModule {
         @ApplicationContext c: Context,
         productDao: ProductDao,
         wishlistDao: WishlistDao,
+        findDao: FindDao,
         orderDao: OrderDao,
         imageCacheDao: ImageCacheDao,
         pendingOpDao: PendingOpDao,
+        userReviewDao: UserReviewDao,
         firestore: FirebaseFirestore,
         storage: FirebaseStorage,
         gson: Gson
@@ -68,8 +77,10 @@ object AppModule {
             productDao     = productDao,
             wishlistDao    = wishlistDao,
             orderDao       = orderDao,
+            findDao        = findDao,
             imageCacheDao  = imageCacheDao,
             pendingOpDao   = pendingOpDao,
+            userReviewDao  = userReviewDao,
             firestore      = firestore,
             storage        = storage,
             gson           = gson,
@@ -100,6 +111,19 @@ object AppModule {
     fun provideFirebasePerformance(): FirebasePerformance =
         FirebasePerformance.getInstance()
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Provides @IoDispatcher
-    fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
+    fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO.limitedParallelism(4)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Provides @Singleton
+    fun provideImageLoader(@ApplicationContext ctx: Context): ImageLoader =
+        ImageLoader.Builder(ctx)
+            .memoryCache {
+                MemoryCache.Builder(ctx)
+                    .maxSizePercent(0.10)
+                    .build()
+            }
+            .dispatcher(Dispatchers.IO.limitedParallelism(2))
+            .build()
 }

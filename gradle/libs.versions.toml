@@ -39,6 +39,7 @@ firebaseVertexai = "16.4.0"
 accompanist = "0.30.1"
 workRuntimeKtx = "2.10.1"
 zxingAndroidEmbedded = "4.3.0"
+firebaseCrashlyticsBuildtools = "3.0.3"
 
 [libraries]
 accompanist-flowlayout = { module = "com.google.accompanist:accompanist-flowlayout", version.ref = "accompanistFlowlayout" }
@@ -90,6 +91,7 @@ firebase-performance = { module = "com.google.firebase:firebase-perf", version.r
 firebase-vertexai = { group = "com.google.firebase", name = "firebase-vertexai", version.ref = "firebaseVertexai" }
 accompanist = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
 zxing-android-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxingAndroidEmbedded" }
+firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

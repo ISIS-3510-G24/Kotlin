@@ -8,7 +8,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.unimarket.ui.models.BottomNavItem
 import com.google.firebase.analytics.FirebaseAnalytics
@@ -36,11 +35,8 @@ fun BottomNavBar(navController: NavController, items: List<BottomNavItem>) {
 
                     // Navigate to the clicked item
                     navController.navigate(item.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
-                        }
+                        popUpTo(item.route) { inclusive = true }
                         launchSingleTop = true
-                        restoreState = true
                     }
                 }
             )

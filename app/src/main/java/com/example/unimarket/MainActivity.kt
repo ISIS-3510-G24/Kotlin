@@ -1,10 +1,11 @@
 package com.example.unimarket
 
 import android.annotation.SuppressLint
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.Scaffold
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,20 +35,20 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
             UniMarketTheme {
-                Scaffold {
-                    AppNavigation()
-                }
+                AppNavigation()
             }
         }
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
@@ -117,7 +118,6 @@ fun AppNavigation() {
 
         composable("main") {
             MainScreen(rootNavController = navController)
-
         }
 
         composable(
@@ -136,7 +136,7 @@ fun AppNavigation() {
             arguments = listOf(navArgument("findId") { type = NavType.StringType })
         ) { backStackEntry ->
             val findDetailVm: FindDetailViewModel =
-                viewModel (viewModelStoreOwner = backStackEntry)
+                viewModel(viewModelStoreOwner = backStackEntry)
             FindDetailScreen(
                 navController = navController,
                 viewModel = findDetailVm
