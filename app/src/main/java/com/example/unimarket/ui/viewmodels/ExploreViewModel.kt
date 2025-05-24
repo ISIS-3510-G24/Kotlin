@@ -1,16 +1,10 @@
 package com.example.unimarket.ui.viewmodels
 
-import android.content.Context
 import android.net.Uri
 import androidx.core.os.bundleOf
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.unimarket.data.UniMarketRepository
-import com.example.unimarket.data.daos.ProductDao
-import com.example.unimarket.data.entities.ProductEntity
 import com.example.unimarket.di.IoDispatcher
 import com.example.unimarket.ui.models.Product
 import com.example.unimarket.ui.models.User
@@ -22,9 +16,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.perf.FirebasePerformance
 import com.google.firebase.perf.metrics.Trace
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -36,21 +30,17 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-private val Context.dataStore by preferencesDataStore("recently_viewed_prefs")
-private val KEY_RECENT_STR = stringPreferencesKey("recently_viewed_list")
-
+// This ViewModel loads products from Firestore and handles errors
 @HiltViewModel
 class ExploreViewModel @Inject constructor(
     private val repo: UniMarketRepository,
-    private val productDao: ProductDao,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     private val analytics: FirebaseAnalytics,
     private val performance: FirebasePerformance,
@@ -58,7 +48,6 @@ class ExploreViewModel @Inject constructor(
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
     private val connectivityObserver: ConnectivityObserver,
-    @ApplicationContext private val ctx: Context
 ) : ViewModel() {
 
     val isOnline: Flow<Boolean> = connectivityObserver.isOnline
@@ -67,10 +56,12 @@ class ExploreViewModel @Inject constructor(
         private const val DEFAULT_CACHE_TTL_MS = 300_000L
     }
 
+
+    private var uploadingRemotePath: String? = null
     private var loadTrace: Trace? = null
 
     val products: StateFlow<List<Product>> =
-        productDao.observeAll()
+        repo.getProducts(DEFAULT_CACHE_TTL_MS)
             .map { entities ->
                 entities.map { ent ->
                     Product(
@@ -90,24 +81,9 @@ class ExploreViewModel @Inject constructor(
                 initialValue = emptyList()
             )
 
-    private val _wishlistIds = MutableStateFlow<Set<String>>(emptySet())
-    val wishlistIds: StateFlow<Set<String>> = _wishlistIds.asStateFlow()
 
     private val _recommendations = MutableStateFlow<List<String>>(emptyList())
     val recommendations: StateFlow<List<String>> = _recommendations.asStateFlow()
-
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    private val _recentlyViewed = MutableStateFlow<List<String>>(emptyList())
-    val recentlyViewed: StateFlow<List<String>> = _recentlyViewed.asStateFlow()
-
-    sealed class UIEvent {
-        data class ShowMessage(val message: String) : UIEvent()
-        object ProductPublished : UIEvent()
-    }
-    private val _uiEvent = MutableSharedFlow<UIEvent>(extraBufferCapacity = 1)
-    val uiEvent: SharedFlow<UIEvent> = _uiEvent.asSharedFlow()
 
     private val _errorMessage = MutableSharedFlow<String?>(
         replay = 1,
@@ -115,8 +91,24 @@ class ExploreViewModel @Inject constructor(
     )
     val errorMessage: SharedFlow<String?> = _errorMessage.asSharedFlow()
 
+    // Loading state to indicate if data is being refreshed
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    sealed class UIEvent {
+        data class ShowMessage(val message: String) : UIEvent()
+        object ProductPublished : UIEvent()
+    }
+
+    private val _uiEvent = MutableSharedFlow<UIEvent>(extraBufferCapacity = 1)
+    val uiEvent: SharedFlow<UIEvent> = _uiEvent.asSharedFlow()
+
+    // User preferences for filtering products
     private val _userPreferences = MutableStateFlow<List<String>>(emptyList())
     val userPreferences: StateFlow<List<String>> = _userPreferences
+
+    private val _wishlistIds = MutableStateFlow<Set<String>>(emptySet())
+    val wishlistIds: StateFlow<Set<String>> = _wishlistIds.asStateFlow()
 
     private val _uploadState = MutableStateFlow<ImageUploadState>(ImageUploadState.Idle)
     val uploadState: StateFlow<ImageUploadState> = _uploadState.asStateFlow()
@@ -131,33 +123,6 @@ class ExploreViewModel @Inject constructor(
         observeRecommendations()
         loadUserPreferences()
         observeImageCache()
-        observeRecentlyViewed()
-        fetchAndCacheProducts()
-    }
-
-    private fun fetchAndCacheProducts() {
-        viewModelScope.launch(ioDispatcher + handler) {
-            repo.getProducts(DEFAULT_CACHE_TTL_MS)
-                .catch { e -> crashlytics.recordException(e) }
-                .collect { entities ->
-                    val roomEntities = entities.map { ent ->
-                        ProductEntity(
-                            id = ent.id,
-                            title = ent.title,
-                            description = ent.description,
-                            price = ent.price,
-                            imageUrls = ent.imageUrls,
-                            labels = ent.labels,
-                            status = ent.status,
-                            majorID = ent.id,
-                            classId = "",
-                            sellerID = "",
-                            fetchedAt = System.currentTimeMillis()
-                        )
-                    }
-                    productDao.insertAll(roomEntities)
-                }
-        }
     }
 
     private fun observeWishlist() {
@@ -180,18 +145,19 @@ class ExploreViewModel @Inject constructor(
         }
     }
 
-    private fun observeRecommendations() {
-        val uid = auth.currentUser?.uid ?: return
-        firestore.collection("recommendations")
-            .document(uid)
-            .addSnapshotListener { snap, err ->
-                if (err != null) {
-                    crashlytics.recordException(err)
-                    return@addSnapshotListener
-                }
-                val list = snap?.get("products") as? List<String> ?: emptyList()
-                _recommendations.value = list
-            }
+    fun onScreenLoadStart() {
+        loadTrace = performance
+            .newTrace("load_ExploreScreen")
+            .apply { start() }
+        analytics.logEvent("screen_load_start", bundleOf("screen" to "Explore"))
+    }
+
+    fun onScreenLoadEnd(success: Boolean = true) {
+        loadTrace?.stop()
+        analytics.logEvent(
+            "screen_load_end",
+            bundleOf("screen" to "Explore", "success" to success)
+        )
     }
 
     private fun loadUserPreferences() {
@@ -207,6 +173,38 @@ class ExploreViewModel @Inject constructor(
             }
         }
     }
+
+    fun publishProduct(product: Product) {
+        viewModelScope.launch(ioDispatcher + handler) {
+            _uiEvent.emit(UIEvent.ShowMessage("Publishing product…"))
+            try {
+                firestore.collection("Product").add(product).await()
+                _uiEvent.emit(UIEvent.ShowMessage("Product published successfully"))
+                withContext(Dispatchers.Main) {
+                    _uiEvent.emit(UIEvent.ProductPublished)
+                    resetUploadState()
+                }
+            } catch (e: Exception) {
+                crashlytics.recordException(e)
+                _uiEvent.emit(UIEvent.ShowMessage("Failed to publish product: ${e.message}"))
+            }
+        }
+    }
+
+    private fun observeRecommendations() {
+        val uid = auth.currentUser?.uid ?: return
+        firestore.collection("recommendations")
+            .document(uid)
+            .addSnapshotListener { snap, err ->
+                if (err != null) {
+                    crashlytics.recordException(err)
+                    return@addSnapshotListener
+                }
+                val list = snap?.get("products") as? List<String> ?: emptyList()
+                _recommendations.value = list
+            }
+    }
+
 
     private fun observeImageCache() =
         viewModelScope.launch(ioDispatcher + handler) {
@@ -232,6 +230,7 @@ class ExploreViewModel @Inject constructor(
         _uploadState.value = ImageUploadState.Idle
     }
 
+
     fun uploadProductImage(uri: Uri) {
         val uid = auth.currentUser?.uid ?: return
         val path = "product_images/$uid/${System.currentTimeMillis()}.jpg"
@@ -242,47 +241,15 @@ class ExploreViewModel @Inject constructor(
         }
     }
 
-    private fun getCurrentUserId(): String {
+    fun getCurrentUserId(): String {
         return FirebaseAuth.getInstance().currentUser?.uid ?: "defaultUserId"
     }
-
-    private fun observeRecentlyViewed() {
-        ctx.dataStore.data
-            .map { prefs ->
-                prefs[KEY_RECENT_STR]
-                    ?.split(",")
-                    ?.filter { it.isNotBlank() }
-                    .orEmpty()
-            }
-            .onEach { list ->
-                _recentlyViewed.value = list
-            }
-            .launchIn(viewModelScope)
-    }
-
-    // 7) Registra vista de producto: actualiza inmediatamente StateFlow y guarda en DataStore
-    fun recordView(productId: String) {
-        viewModelScope.launch {
-            // Actualizar StateFlow inmediatamente
-            val currentList = _recentlyViewed.value
-            val updatedList = (listOf(productId) + currentList.filter { it != productId })
-                .take(10)
-            _recentlyViewed.value = updatedList
-
-            // Guardar en DataStore
-            ctx.dataStore.edit { prefs ->
-                prefs[KEY_RECENT_STR] = updatedList.joinToString(separator = ",")
-            }
-        }
-    }
-
-    // Auxiliar para subir imágenes
-    private var uploadingRemotePath: String? = null
 }
+
 
 sealed class ImageUploadState {
     object Idle : ImageUploadState()
     data class Pending(val localUri: String, val remotePath: String) : ImageUploadState()
     data class Success(val remotePath: String) : ImageUploadState()
-    data class Failed(val localUri: String) : ImageUploadState()
+    data class Failed(val remotePath: String) : ImageUploadState()
 }
