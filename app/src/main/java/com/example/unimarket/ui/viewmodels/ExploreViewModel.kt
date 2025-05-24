@@ -1,7 +1,6 @@
 package com.example.unimarket.ui.viewmodels
 
 import android.net.Uri
-import android.util.Log
 import androidx.core.os.bundleOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -21,6 +20,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -50,8 +50,7 @@ class ExploreViewModel @Inject constructor(
     private val connectivityObserver: ConnectivityObserver,
 ) : ViewModel() {
 
-    private val _isOnline = MutableStateFlow(true)
-    val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
+    val isOnline: Flow<Boolean> = connectivityObserver.isOnline
 
     companion object {
         private const val DEFAULT_CACHE_TTL_MS = 300_000L
@@ -120,40 +119,10 @@ class ExploreViewModel @Inject constructor(
     }
 
     init {
-        viewModelScope.launch {
-            connectivityObserver.isOnline.collect { online ->
-                _isOnline.value = online
-            }
-        }
-
         observeWishlist()
         observeRecommendations()
         loadUserPreferences()
-        viewModelScope.launch(ioDispatcher) {
-            repo.observeImageCacheEntries()
-                .filter { entries -> entries.any { it.state != "PENDING" } }
-                .collect { entries ->
-                    uploadingRemotePath?.let { path ->
-                        entries
-                            .find { it.remotePath == path && it.state != "PENDING" }
-                            ?.let { entry ->
-                                when (entry.state) {
-                                    "SUCCESS" -> _uploadState.value =
-                                        ImageUploadState.Success(entry.downloadUrl!!)
-
-                                    "FAILED" -> _uploadState.value =
-                                        ImageUploadState.Failed(entry.localUri)
-                                }
-
-                                viewModelScope.launch(ioDispatcher) {
-                                    repo.clearImageCacheEntry(entry)
-                                }
-
-                                uploadingRemotePath = null
-                            }
-                    }
-                }
-        }
+        observeImageCache()
     }
 
     private fun observeWishlist() {
@@ -237,22 +206,25 @@ class ExploreViewModel @Inject constructor(
     }
 
 
-    private fun observeImageCache() {
+    private fun observeImageCache() =
         viewModelScope.launch(ioDispatcher + handler) {
             repo.observeImageCacheEntries()
-                .filter { list -> list.any { it.state != "PENDING" } }
-                .collect { list ->
-                    list.find { it.state != "PENDING" }?.let { entry ->
-                        when (entry.state) {
-                            "SUCCESS" -> _uploadState.value =
-                                ImageUploadState.Success(entry.downloadUrl!!)
-
-                            "FAILED" -> _uploadState.value = ImageUploadState.Failed(entry.localUri)
-                        }
+                .filter { it.any { entry -> entry.state != "PENDING" } }
+                .collect { entries ->
+                    uploadingRemotePath?.let { path ->
+                        entries.firstOrNull { it.remotePath == path && it.state != "PENDING" }
+                            ?.also { entry ->
+                                _uploadState.value = when (entry.state) {
+                                    "SUCCESS" -> ImageUploadState.Success(entry.downloadUrl!!)
+                                    "FAILED"  -> ImageUploadState.Failed(entry.localUri)
+                                    else      -> _uploadState.value
+                                }
+                                repo.clearImageCacheEntry(entry)
+                                uploadingRemotePath = null
+                            }
                     }
                 }
         }
-    }
 
     fun resetUploadState() {
         _uploadState.value = ImageUploadState.Idle
@@ -260,12 +232,9 @@ class ExploreViewModel @Inject constructor(
 
 
     fun uploadProductImage(uri: Uri) {
-        val userId = auth.currentUser?.uid ?: return
-        val path = "product_images/$userId/${System.currentTimeMillis()}.jpg"
-
+        val uid = auth.currentUser?.uid ?: return
+        val path = "product_images/$uid/${System.currentTimeMillis()}.jpg"
         uploadingRemotePath = path
-
-        Log.d("Publish", "uploadProductImage → uri=$uri, path=$path")
         _uploadState.value = ImageUploadState.Pending(uri.toString(), path)
         viewModelScope.launch(ioDispatcher + handler) {
             repo.uploadImage(uri.toString(), path)
