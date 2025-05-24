@@ -318,7 +318,7 @@ class UniMarketRepository(
             .document(userId)
             .collection("reviews")
             .orderBy("createdAt", Query.Direction.DESCENDING)
-            .limit(10)
+            //.limit(10)
             .get()
             .await()
 
