@@ -21,6 +21,7 @@ import com.example.unimarket.di.IoDispatcher
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.firestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.storage
@@ -30,6 +31,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -38,6 +40,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.util.Date
+
+data class RatingStats(val average: Double, val count: Int)
 
 class UniMarketRepository(
     private val appContext: Context,
@@ -304,6 +308,11 @@ class UniMarketRepository(
     fun hasReviewedOrder(reviewerId: String, orderId: String): Flow<Boolean> =
         userReviewDao.hasReviewedOrder(reviewerId, orderId)
 
+    fun observeLatestReviewsFor(
+        uid: String,
+        limit: Int = 10,
+    ) = userReviewDao.observeLatestReviewsFor(uid, limit)
+
     suspend fun postUserReview(
         reviewerId: String,
         targetId: String,
@@ -473,14 +482,49 @@ class UniMarketRepository(
             .collection("reviews")
             .add(
                 mapOf(
-                    "orderId"        to orderId,
+                    "orderId" to orderId,
                     "reviewerUserId" to reviewerId,
-                    "rating"         to rating,
-                    "comment"        to comment,
-                    "createdAt"      to FieldValue.serverTimestamp()
+                    "rating" to rating,
+                    "comment" to comment,
+                    "createdAt" to FieldValue.serverTimestamp()
                 )
             )
             .await()
+    }
+
+    fun observeUserRatingStats(uid: String): Flow<RatingStats> =
+        combine(
+            userReviewDao.averageRatingFor(uid).map { it ?: 0.0 },
+            userReviewDao.countReviewsFor(uid)
+        ) { avg, cnt ->
+            RatingStats(avg, cnt)
+        }
+
+    suspend fun refreshUserReviews(uid: String) = withContext(ioDispatcher) {
+        val snap = firestore
+            .collection("User")
+            .document(uid)
+            .collection("reviews")
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .limit(10)
+            .get()
+            .await()
+
+        val list = snap.documents.map { d->
+            UserReviewEntity(
+                localId = 0,
+                orderId = d.getString("orderId")!!,
+                targetUserId = uid,
+                reviewerUserId = d.getString("reviewerUserId")!!,
+                rating = (d.getLong("rating")!!).toInt(),
+                comment = d.getString("comment")!!,
+                createdAt = d.getTimestamp("createdAt")!!.toDate().time,
+                status = "SENT"
+            )
+        }
+
+        userReviewDao.clearSentReviewsFor(uid)
+        userReviewDao.insertAll(list)
     }
 }
 
