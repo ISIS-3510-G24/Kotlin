@@ -40,9 +40,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             UniMarketTheme {
-                Scaffold {
-                    AppNavigation()
-                }
+                AppNavigation()
             }
         }
     }
@@ -136,7 +134,7 @@ fun AppNavigation() {
             arguments = listOf(navArgument("findId") { type = NavType.StringType })
         ) { backStackEntry ->
             val findDetailVm: FindDetailViewModel =
-                viewModel (viewModelStoreOwner = backStackEntry)
+                viewModel(viewModelStoreOwner = backStackEntry)
             FindDetailScreen(
                 navController = navController,
                 viewModel = findDetailVm
