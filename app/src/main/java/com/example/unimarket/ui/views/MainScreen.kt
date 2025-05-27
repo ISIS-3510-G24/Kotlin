@@ -86,13 +86,13 @@ fun MainScreen(
                 route = "productDetail/{productId}",
                 arguments = listOf(navArgument("productId") { type = NavType.StringType })
             ) { backStackEntry ->
-                val detailVm: ProductDetailViewModel =
-                    hiltViewModel(backStackEntry)
+                val detailVm: ProductDetailViewModel = hiltViewModel(backStackEntry)
                 ProductDetailScreen(
-                    navController = navController,
+                    navController = rootNavController,
                     viewModel = detailVm
                 )
             }
+
 
             composable("publishProduct") {
                 PublishProductScreen(navController)

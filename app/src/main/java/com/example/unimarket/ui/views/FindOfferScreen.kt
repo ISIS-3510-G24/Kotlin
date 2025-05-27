@@ -81,18 +81,16 @@ fun FindOfferScreen(
         }
     )
 
-    val uiState     by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
-    val coroutineScope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Find & Offer") },
                 actions = {
-                    IconButton(onClick = {
-                        viewModel.refreshAll()
-                    }) {
+                    IconButton(onClick = { viewModel.refreshAll() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
                 }
@@ -108,7 +106,7 @@ fun FindOfferScreen(
         floatingActionButton = {
             if (scrollState.value > 0) {
                 FloatingActionButton(
-                    onClick = { coroutineScope.launch { scrollState.animateScrollTo(0) } },
+                    onClick = { scope.launch { scrollState.animateScrollTo(0) } },
                     containerColor = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(16.dp)
                 ) {
@@ -172,7 +170,7 @@ fun FindOfferScreen(
 
                 SectionTitle("All")
                 SectionRow(
-                    items        = uiState.findList.filter { it.title.contains(uiState.searchText, ignoreCase = true) },
+                    items        = uiState.findList.filter { it.title.contains(uiState.searchText, true) },
                     onFindClick  = { id -> navController.navigate("findDetail/$id") },
                     onOfferClick = { id -> navController.navigate("offerDetail/$id") }
                 )
