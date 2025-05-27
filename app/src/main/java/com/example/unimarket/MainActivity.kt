@@ -10,7 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -21,6 +21,7 @@ import com.example.unimarket.ui.theme.UniMarketTheme
 import com.example.unimarket.ui.viewmodels.FindDetailViewModel
 import com.example.unimarket.ui.viewmodels.OfferDetailViewModel
 import com.example.unimarket.ui.viewmodels.ProductDetailViewModel
+import com.example.unimarket.ui.viewmodels.SellerReviewsViewModel
 import com.example.unimarket.ui.views.FindDetailScreen
 import com.example.unimarket.ui.views.LoginScreen
 import com.example.unimarket.ui.views.MainScreen
@@ -30,6 +31,7 @@ import com.example.unimarket.ui.views.PersonalizationScreen
 import com.example.unimarket.ui.views.ProductDetailScreen
 import com.example.unimarket.ui.views.PublishProductScreen
 import com.example.unimarket.ui.views.RegisterScreen
+import com.example.unimarket.ui.views.SellerReviewsScreen
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -39,7 +41,6 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContent {
             UniMarketTheme {
                 AppNavigation()
@@ -51,35 +52,34 @@ class MainActivity : ComponentActivity() {
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AppNavigation() {
+    // Este es el NavController raíz de toda la app
     val navController = rememberNavController()
     val context = LocalContext.current
 
-    // Observe onboarding completion from DataStore
+    // 1) Observamos si completó onboarding
     val onboardingCompletedFlow = PreferencesManager.isOnboardingCompleted(context)
     val onboardingCompleted by onboardingCompletedFlow.collectAsState(initial = false)
 
-    // Check if user is authenticated
+    // 2) Chequeamos si está autenticado
     val currentUser = FirebaseAuth.getInstance().currentUser
 
-    // Set startDestination based on whether onboarding and authentication status
+    // 3) Definimos pantalla inicial
     val startDestination = when {
         !onboardingCompleted -> "onboarding"
-        currentUser == null -> "login"
-        else -> "main"
+        currentUser == null    -> "login"
+        else                   -> "main"
     }
 
-    NavHost(navController = navController, startDestination = startDestination)
-    {
+    NavHost(navController = navController, startDestination = startDestination) {
+        // Onboarding
         composable("onboarding") {
             OnboardingScreen(
                 onFinishOnboarding = {
-                    // Navigate to personalization after finishing onboarding
                     navController.navigate("personalization") {
                         popUpTo("onboarding") { inclusive = true }
                     }
                 },
                 onSkip = {
-                    // Skip onboarding and navigate to login
                     navController.navigate("login") {
                         popUpTo("onboarding") { inclusive = true }
                     }
@@ -87,10 +87,10 @@ fun AppNavigation() {
             )
         }
 
+        // Personalization
         composable("personalization") {
             PersonalizationScreen(
                 onFinishPersonalization = {
-                    // After personalization, navigate to login
                     navController.navigate("login") {
                         popUpTo("personalization") { inclusive = true }
                     }
@@ -98,6 +98,7 @@ fun AppNavigation() {
             )
         }
 
+        // Login
         composable("login") {
             LoginScreen(
                 onLoginSuccess = {
@@ -105,9 +106,13 @@ fun AppNavigation() {
                         popUpTo("login") { inclusive = true }
                     }
                 },
-                onNavigateToRegister = { navController.navigate("register") }
+                onNavigateToRegister = {
+                    navController.navigate("register")
+                }
             )
         }
+
+        // Register
         composable("register") {
             RegisterScreen(
                 onRegisterSuccess = {
@@ -116,46 +121,74 @@ fun AppNavigation() {
             )
         }
 
+        // Main (pantalla principal con Bottom Nav)
         composable("main") {
+            // Aquí pasamos el NavController raíz para que, desde MainScreen,
+            // cuando naveguen a ProductDetailScreen o SellerReviewsScreen,
+            // usen exactamente este mismo navController,
+            // donde ya están registradas las rutas.
             MainScreen(rootNavController = navController)
         }
 
+        // ProductDetail: recibe productId como argumento
         composable(
             route = "productDetail/{productId}",
             arguments = listOf(navArgument("productId") { type = NavType.StringType })
         ) { backStackEntry ->
+            // IMPORTANTE: obtenemos el ViewModel con hiltViewModel(backStackEntry),
+            // para que Hilt inyecte correctamente UniMarketRepository, SavedStateHandle, etc.
             val detailVm: ProductDetailViewModel =
-                viewModel(viewModelStoreOwner = backStackEntry)
+                hiltViewModel(backStackEntry)
             ProductDetailScreen(
                 navController = navController,
                 viewModel = detailVm
             )
         }
+
+        // SellerReviews: recibe sellerId como argumento
+        composable(
+            route = "sellerReviews/{sellerId}",
+            arguments = listOf(navArgument("sellerId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            // Aquí también usamos hiltViewModel(backStackEntry) en lugar de viewModel()
+            // para que Hilt inyecte UniMarketRepository y SavedStateHandle.
+            val sellerReviewsVm: SellerReviewsViewModel =
+                hiltViewModel(backStackEntry)
+            SellerReviewsScreen(
+                navController = navController,
+                viewModel = sellerReviewsVm
+            )
+        }
+
+        // FindDetail
         composable(
             route = "findDetail/{findId}",
             arguments = listOf(navArgument("findId") { type = NavType.StringType })
         ) { backStackEntry ->
             val findDetailVm: FindDetailViewModel =
-                viewModel(viewModelStoreOwner = backStackEntry)
+                hiltViewModel(backStackEntry)
             FindDetailScreen(
                 navController = navController,
                 viewModel = findDetailVm
             )
         }
+
+        // OfferDetail
         composable(
             route = "offerDetail/{findId}",
             arguments = listOf(navArgument("findId") { type = NavType.StringType })
         ) { backStackEntry ->
             val offerDetailVm: OfferDetailViewModel =
-                viewModel(viewModelStoreOwner = backStackEntry)
+                hiltViewModel(backStackEntry)
             OfferDetailScreen(
                 navController = navController,
                 viewModel = offerDetailVm
             )
         }
+
+        // PublishProduct
         composable("publishProduct") {
             PublishProductScreen(navController)
         }
-
     }
 }

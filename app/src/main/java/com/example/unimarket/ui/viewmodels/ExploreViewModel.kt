@@ -260,23 +260,19 @@ class ExploreViewModel @Inject constructor(
             .launchIn(viewModelScope)
     }
 
-    // 7) Registra vista de producto: actualiza inmediatamente StateFlow y guarda en DataStore
     fun recordView(productId: String) {
         viewModelScope.launch {
-            // Actualizar StateFlow inmediatamente
             val currentList = _recentlyViewed.value
             val updatedList = (listOf(productId) + currentList.filter { it != productId })
                 .take(10)
             _recentlyViewed.value = updatedList
 
-            // Guardar en DataStore
             ctx.dataStore.edit { prefs ->
                 prefs[KEY_RECENT_STR] = updatedList.joinToString(separator = ",")
             }
         }
     }
 
-    // Auxiliar para subir imágenes
     private var uploadingRemotePath: String? = null
 }
 

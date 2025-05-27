@@ -4,9 +4,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -18,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -46,32 +48,48 @@ import com.google.accompanist.flowlayout.FlowRow
 import java.text.NumberFormat
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductDetailScreen(
     navController: NavController,
-    viewModel: ProductDetailViewModel = hiltViewModel(),
+    viewModel: ProductDetailViewModel = hiltViewModel()
 ) {
-    val isOnline by viewModel.isOnline.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val product by viewModel.product.collectAsState()
-    val isFav by viewModel.isInWishlist.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val isLoading    by viewModel.isLoading.collectAsState()
+    val product      by viewModel.product.collectAsState()
+    val sellerName   by viewModel.sellerName.collectAsState()
+    val isFav        by viewModel.isInWishlist.collectAsState()
+    val error        by viewModel.error.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = product?.title ?: "Detail") },
+                title = { Text(text = product?.title ?: "Product detail") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { viewModel.toggleWishlist() }) {
+                        if (isFav) {
+                            Icon(
+                                imageVector = Icons.Filled.Favorite,
+                                contentDescription = "Delete from favorites",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Outlined.FavoriteBorder,
+                                contentDescription = "Add to favorites"
+                            )
+                        }
                     }
                 }
             )
         }
     ) { padding ->
         Box(
-            modifier = Modifier
+            Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
@@ -91,10 +109,15 @@ fun ProductDetailScreen(
                 }
 
                 product != null -> {
+                    val nonNullProduct: Product = product!!
+
                     ProductDetailContent(
-                        product!!,
-                        isFav,
-                        onFavClick = { viewModel.toggleWishlist() })
+                        product    = nonNullProduct,
+                        sellerName = sellerName ?: "Loading...",
+                        onSellerClick = {
+                            navController.navigate("sellerReviews/${nonNullProduct.sellerID}")
+                        }
+                    )
                 }
             }
         }
@@ -104,12 +127,11 @@ fun ProductDetailScreen(
 @Composable
 private fun ProductDetailContent(
     product: Product,
-    isFav: Boolean,
-    onFavClick: () -> Unit,
+    sellerName: String,
+    onSellerClick: () -> Unit
 ) {
     val formattedPrice = remember(product.price) {
-        NumberFormat
-            .getCurrencyInstance(Locale("es", "CO"))
+        NumberFormat.getCurrencyInstance(Locale("es", "CO"))
             .format(product.price)
     }
 
@@ -120,60 +142,36 @@ private fun ProductDetailContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = product.title,
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.weight(1f)
-            )
-            IconButton(onClick = onFavClick) {
-                if (isFav) {
-                    Icon(Icons.Filled.Favorite, contentDescription = "Remove from wishlist")
-                } else {
-                    Icon(Icons.Outlined.FavoriteBorder, contentDescription = "Add to wishlist")
+        Text(
+            text = product.title,
+            style = MaterialTheme.typography.headlineSmall
+        )
+
+        if (product.imageUrls.isNotEmpty()) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(product.imageUrls) { url ->
+                    Card(
+                        modifier = Modifier.size(200.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Image(
+                            painter = rememberAsyncImagePainter(url),
+                            contentDescription = "Image of ${product.title}",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(product.imageUrls) { url ->
-                Card(
-                    modifier = Modifier.size(200.dp),
-                    elevation = CardDefaults.cardElevation(4.dp)
-                ) {
-                    Image(
-                        painter = rememberAsyncImagePainter(url),
-                        contentDescription = product.title,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(text = product.title, style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(text = "Price: $formattedPrice", style = MaterialTheme.typography.titleMedium)
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(text = "Major ID: ${product.majorID}", style = MaterialTheme.typography.bodyMedium)
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(text = "Class ID: ${product.classId}", style = MaterialTheme.typography.bodyMedium)
-        Spacer(modifier = Modifier.height(12.dp))
+        Text("Price: $formattedPrice", style = MaterialTheme.typography.titleMedium)
+        Text("Major ID: ${product.majorID}", style = MaterialTheme.typography.bodyMedium)
+        Text("Class ID: ${product.classId}", style = MaterialTheme.typography.bodyMedium)
 
         if (product.labels.isNotEmpty()) {
-            Text(text = "Labels:", style = MaterialTheme.typography.bodyLarge)
-            Spacer(modifier = Modifier.height(8.dp))
-            FlowRow(
-                mainAxisSpacing = 8.dp,
-                crossAxisSpacing = 8.dp
-            ) {
+            Text("Labels:", style = MaterialTheme.typography.bodyLarge)
+            FlowRow(mainAxisSpacing = 8.dp, crossAxisSpacing = 8.dp) {
                 product.labels.forEach { label ->
                     Surface(
                         tonalElevation = 2.dp,
@@ -187,12 +185,26 @@ private fun ProductDetailContent(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
         }
 
-        Text(text = "Description:", style = MaterialTheme.typography.bodyLarge)
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(text = product.description, style = MaterialTheme.typography.bodyMedium)
-        Spacer(modifier = Modifier.height(24.dp))
+        Text("Description:", style = MaterialTheme.typography.bodyLarge)
+        Text(product.description, style = MaterialTheme.typography.bodyMedium)
+
+        Button(
+            onClick = onSellerClick,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(96.dp)
+                .padding(top = 8.dp)
+        ) {
+            Text(
+                text = "Seller: $sellerName\nTap Here to see seller reviews",
+                color = MaterialTheme.colorScheme.onPrimary,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
